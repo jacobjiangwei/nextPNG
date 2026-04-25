@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import ChatPanel from "../components/ChatPanel";
+import ExamplesPanel from "../components/ExamplesPanel";
 import CanvasPreview from "../components/CanvasPreview";
 import YamlEditor from "../components/YamlEditor";
 
@@ -39,10 +39,6 @@ layers:
 export default function Home() {
   const [yamlText, setYamlText] = useState(DEFAULT_YAML);
 
-  const handleYamlGenerated = useCallback((yaml: string) => {
-    setYamlText(yaml);
-  }, []);
-
   const handleExportPng = useCallback(() => {
     const canvas = document.querySelector("canvas");
     if (!canvas) return;
@@ -63,7 +59,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-[#121212] text-zinc-200">
-      {/* Toolbar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border-b border-zinc-700">
         <span className="text-sm font-bold tracking-wider text-zinc-300">NewPNG</span>
         <div className="flex-1" />
@@ -80,15 +75,14 @@ export default function Home() {
           Download .npng
         </button>
       </div>
-      {/* Three panels */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-1/4 border-r border-zinc-700 overflow-hidden">
-          <ChatPanel onYamlGenerated={handleYamlGenerated} />
+        <div className="w-1/5 border-r border-zinc-700 overflow-hidden">
+          <ExamplesPanel onSelect={setYamlText} />
         </div>
-        <div className="w-1/2 border-r border-zinc-700 overflow-hidden">
+        <div className="w-2/5 border-r border-zinc-700 overflow-hidden">
           <CanvasPreview yamlText={yamlText} />
         </div>
-        <div className="w-1/4 overflow-hidden">
+        <div className="w-2/5 overflow-hidden">
           <YamlEditor value={yamlText} onChange={setYamlText} />
         </div>
       </div>
