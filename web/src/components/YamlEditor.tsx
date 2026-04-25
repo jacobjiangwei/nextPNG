@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef } from "react";
+import { EditorView } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { basicSetup } from "codemirror";
+import { yaml as yamlLang } from "@codemirror/lang-yaml";
+import { oneDark } from "@codemirror/theme-one-dark";
 
 interface YamlEditorProps {
   value: string;
@@ -9,54 +14,40 @@ interface YamlEditorProps {
 
 export default function YamlEditor({ value, onChange }: YamlEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const onChangeRef = useRef(onChange);
+  const valueRef = useRef(value);
   const suppressUpdate = useRef(false);
+
+  onChangeRef.current = onChange;
+  valueRef.current = value;
 
   useEffect(() => {
     if (!editorRef.current) return;
-    let destroyed = false;
 
-    async function init() {
-      const { EditorView, keymap } = await import("@codemirror/view");
-      const { EditorState } = await import("@codemirror/state");
-      const { basicSetup } = await import("@codemirror/basic-setup");
-      const { yaml: yamlLang } = await import("@codemirror/lang-yaml");
-      const { oneDark } = await import("@codemirror/theme-one-dark");
+    const updateListener = EditorView.updateListener.of((update) => {
+      if (update.docChanged) {
+        suppressUpdate.current = true;
+        onChangeRef.current(update.state.doc.toString());
+      }
+    });
 
-      if (destroyed) return;
+    const state = EditorState.create({
+      doc: valueRef.current,
+      extensions: [basicSetup, yamlLang(), oneDark, updateListener],
+    });
 
-      const updateListener = EditorView.updateListener.of((update: any) => {
-        if (update.docChanged) {
-          suppressUpdate.current = true;
-          onChange(update.state.doc.toString());
-        }
-      });
+    const view = new EditorView({
+      state,
+      parent: editorRef.current,
+    });
 
-      const state = EditorState.create({
-        doc: value,
-        extensions: [basicSetup, yamlLang(), oneDark, updateListener],
-      });
-
-      const view = new EditorView({
-        state,
-        parent: editorRef.current!,
-      });
-
-      viewRef.current = view;
-    }
-
-    init();
+    viewRef.current = view;
 
     return () => {
-      destroyed = true;
-      if (viewRef.current) {
-        viewRef.current.destroy();
-        viewRef.current = null;
-      }
+      view.destroy();
+      viewRef.current = null;
     };
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync external value changes into editor
@@ -79,10 +70,7 @@ export default function YamlEditor({ value, onChange }: YamlEditorProps) {
       <div className="px-3 py-2 text-xs font-semibold text-zinc-400 bg-[#1e1e1e] border-b border-zinc-700">
         YAML Editor
       </div>
-      <div ref={editorRef} className="flex-1 overflow-auto" />
-      {error && (
-        <div className="px-3 py-1 text-xs text-red-400 bg-red-900/30">{error}</div>
-      )}
+      <div ref={editorRef} className="flex-1 overflow-auto min-h-0" />
     </div>
   );
 }
