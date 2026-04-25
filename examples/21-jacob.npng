@@ -1,0 +1,253 @@
+npng: "0.4"
+canvas:
+  width: 400
+  height: 500
+  background: "#F0F4F8"
+layers:
+  # Shadow under character
+  - name: "shadow"
+    elements:
+      - type: ellipse
+        cx: 200
+        cy: 470
+        rx: 80
+        ry: 12
+        fill: "#C0C8D0"
+
+  # Legs
+  - name: "legs"
+    elements:
+      # Left leg (jeans)
+      - type: rect
+        x: 155
+        y: 350
+        width: 30
+        height: 80
+        rx: 5
+        fill: "#4A6FA5"
+      # Right leg (jeans)
+      - type: rect
+        x: 215
+        y: 350
+        width: 30
+        height: 80
+        rx: 5
+        fill: "#4A6FA5"
+      # Left shoe
+      - type: ellipse
+        cx: 168
+        cy: 435
+        rx: 22
+        ry: 10
+        fill: "#333333"
+      # Right shoe
+      - type: ellipse
+        cx: 232
+        cy: 435
+        rx: 22
+        ry: 10
+        fill: "#333333"
+
+  # Body / T-shirt
+  - name: "body"
+    elements:
+      # Torso - dark tee (engineer vibe)
+      - type: rect
+        x: 140
+        y: 240
+        width: 120
+        height: 120
+        rx: 15
+        fill: "#2D3748"
+      # Code on shirt: < / >
+      - type: text
+        x: 200
+        y: 310
+        content: "< / >"
+        font_size: 24
+        font_weight: bold
+        align: center
+        fill: "#48BB78"
+
+  # Arms
+  - name: "arms"
+    elements:
+      # Left arm
+      - type: rect
+        x: 115
+        y: 255
+        width: 28
+        height: 75
+        rx: 14
+        fill: "#F6CBA1"
+      # Right arm - raised, holding coffee
+      - type: rect
+        x: 257
+        y: 230
+        width: 28
+        height: 75
+        rx: 14
+        fill: "#F6CBA1"
+        transform:
+          rotate: -20
+          origin: [271, 230]
+
+  # Coffee cup in right hand
+  - name: "coffee"
+    elements:
+      - type: rect
+        x: 275
+        y: 205
+        width: 22
+        height: 30
+        rx: 3
+        fill: "#FFFFFF"
+        stroke:
+          color: "#A0AEC0"
+          width: 2
+      # Coffee inside
+      - type: rect
+        x: 278
+        y: 212
+        width: 16
+        height: 15
+        fill: "#8B5E3C"
+      # Steam lines
+      - type: path
+        d: "M 283 202 C 281 195 285 190 283 183"
+        fill: "none"
+        stroke:
+          color: "#A0AEC0"
+          width: 1.5
+      - type: path
+        d: "M 290 202 C 288 195 292 190 290 183"
+        fill: "none"
+        stroke:
+          color: "#A0AEC0"
+          width: 1.5
+
+  # Head
+  - name: "head"
+    elements:
+      # Face
+      - type: ellipse
+        cx: 200
+        cy: 180
+        rx: 65
+        ry: 72
+        fill: "#F6CBA1"
+
+  # Hair
+  - name: "hair"
+    elements:
+      # Main hair - dark, slightly messy engineer hair
+      - type: path
+        d: "M 135 175
+            C 135 130 155 105 200 100
+            C 245 95 265 130 265 175
+            C 265 155 260 135 245 122
+            C 230 110 210 108 200 108
+            C 180 108 160 118 150 130
+            C 140 142 137 158 135 175 Z"
+        fill: "#2D1B0E"
+
+  # Face features
+  - name: "face"
+    elements:
+      # Left eye (round, friendly)
+      - type: ellipse
+        cx: 178
+        cy: 175
+        rx: 8
+        ry: 9
+        fill: "#FFFFFF"
+      - type: ellipse
+        cx: 180
+        cy: 175
+        rx: 4
+        ry: 5
+        fill: "#2D3748"
+      # Right eye
+      - type: ellipse
+        cx: 222
+        cy: 175
+        rx: 8
+        ry: 9
+        fill: "#FFFFFF"
+      - type: ellipse
+        cx: 224
+        cy: 175
+        rx: 4
+        ry: 5
+        fill: "#2D3748"
+      # Smile
+      - type: path
+        d: "M 180 200 C 185 215 215 215 220 200"
+        fill: "none"
+        stroke:
+          color: "#C05621"
+          width: 2.5
+      # Nose - small
+      - type: path
+        d: "M 198 185 C 195 192 200 195 205 192"
+        fill: "none"
+        stroke:
+          color: "#D4A574"
+          width: 1.5
+
+  # Glasses (engineer!)
+  - name: "glasses"
+    elements:
+      # Left lens
+      - type: ellipse
+        cx: 178
+        cy: 175
+        rx: 16
+        ry: 14
+        fill: "none"
+        stroke:
+          color: "#2D3748"
+          width: 2.5
+      # Right lens
+      - type: ellipse
+        cx: 222
+        cy: 175
+        rx: 16
+        ry: 14
+        fill: "none"
+        stroke:
+          color: "#2D3748"
+          width: 2.5
+      # Bridge
+      - type: path
+        d: "M 194 175 L 206 175"
+        fill: "none"
+        stroke:
+          color: "#2D3748"
+          width: 2.5
+      # Left temple
+      - type: path
+        d: "M 162 175 L 140 168"
+        fill: "none"
+        stroke:
+          color: "#2D3748"
+          width: 2.5
+      # Right temple
+      - type: path
+        d: "M 238 175 L 260 168"
+        fill: "none"
+        stroke:
+          color: "#2D3748"
+          width: 2.5
+
+  # Name tag
+  - name: "name"
+    elements:
+      - type: text
+        x: 200
+        y: 490
+        content: "Jacob"
+        font_size: 20
+        font_weight: bold
+        align: center
+        fill: "#2D3748"

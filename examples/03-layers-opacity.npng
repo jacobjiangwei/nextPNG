@@ -1,0 +1,71 @@
+npng: "0.1"
+canvas:
+  width: 400
+  height: 400
+  background: "#1A1A2E"
+layers:
+  - name: "background-shapes"
+    opacity: 0.3
+    elements:
+      - type: ellipse
+        cx: 100
+        cy: 100
+        rx: 150
+        ry: 150
+        fill: "#E94560"
+      - type: ellipse
+        cx: 300
+        cy: 300
+        rx: 150
+        ry: 150
+        fill: "#0F3460"
+  - name: "main-content"
+    elements:
+      - type: rect
+        x: 50
+        y: 50
+        width: 300
+        height: 300
+        rx: 20
+        ry: 20
+        fill: "#16213E80"
+        stroke:
+          color: "#E94560"
+          width: 2
+      - type: text
+        x: 200
+        y: 190
+        content: "Layer"
+        font_size: 48
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#FFFFFF"
+        align: "center"
+      - type: text
+        x: 200
+        y: 230
+        content: "Compositing"
+        font_size: 24
+        font_family: "sans-serif"
+        fill: "#E94560"
+        align: "center"
+  - name: "top-accents"
+    opacity: 0.8
+    elements:
+      - type: line
+        x1: 80
+        y1: 280
+        x2: 320
+        y2: 280
+        stroke:
+          color: "#E94560"
+          width: 1
+          dash: [8, 4]
+      - type: text
+        x: 200
+        y: 310
+        content: "opacity: 0.3 | 1.0 | 0.8"
+        font_size: 14
+        font_family: "sans-serif"
+        fill: "#AAAAAA"
+        align: "center"

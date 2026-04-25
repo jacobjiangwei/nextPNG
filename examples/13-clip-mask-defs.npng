@@ -1,0 +1,86 @@
+npng: "0.3"
+canvas:
+  width: 400
+  height: 400
+  background: "#FFFFFF"
+defs:
+  - id: "star"
+    type: path
+    d: "M 200 50 L 230 150 L 340 150 L 250 210 L 280 320 L 200 250 L 120 320 L 150 210 L 60 150 L 170 150 Z"
+    fill: "#FFD700"
+  - id: "circle-mask"
+    elements:
+      - type: ellipse
+        cx: 200
+        cy: 200
+        rx: 120
+        ry: 120
+        fill: "#FFFFFF"
+layers:
+  - name: "background-gradient"
+    elements:
+      - type: rect
+        x: 0
+        y: 0
+        width: 400
+        height: 400
+        fill:
+          type: linear-gradient
+          x1: 0
+          y1: 0
+          x2: 400
+          y2: 400
+          stops:
+            - offset: 0
+              color: "#1A237E"
+            - offset: 1
+              color: "#E91E63"
+  - name: "clipped-stripes"
+    clip_path: "M 200 80 L 200 80 C 266 80 320 134 320 200 C 320 266 266 320 200 320 C 134 320 80 266 80 200 C 80 134 134 80 200 80 Z"
+    elements:
+      - type: rect
+        x: 0
+        y: 0
+        width: 400
+        height: 40
+        fill: "#FFFFFF40"
+      - type: rect
+        x: 0
+        y: 80
+        width: 400
+        height: 40
+        fill: "#FFFFFF40"
+      - type: rect
+        x: 0
+        y: 160
+        width: 400
+        height: 40
+        fill: "#FFFFFF40"
+      - type: rect
+        x: 0
+        y: 240
+        width: 400
+        height: 40
+        fill: "#FFFFFF40"
+      - type: rect
+        x: 0
+        y: 320
+        width: 400
+        height: 40
+        fill: "#FFFFFF40"
+  - name: "masked-star"
+    mask: "circle-mask"
+    elements:
+      - type: use
+        ref: "star"
+  - name: "label"
+    elements:
+      - type: text
+        x: 200
+        y: 385
+        content: "v0.3: clip + mask + defs/use"
+        font_size: 14
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#FFFFFF"
+        align: "center"

@@ -1,0 +1,67 @@
+npng: "0.1"
+canvas:
+  width: 400
+  height: 400
+  background: "#FFFFFF"
+layers:
+  - name: "transforms"
+    elements:
+      # A series of rotated rectangles forming a pinwheel
+      - type: rect
+        x: -60
+        y: -10
+        width: 120
+        height: 20
+        fill: "#E74C3C"
+        transform:
+          translate: [200, 200]
+          rotate: 0
+      - type: rect
+        x: -60
+        y: -10
+        width: 120
+        height: 20
+        fill: "#3498DB"
+        transform:
+          translate: [200, 200]
+          rotate: 45
+      - type: rect
+        x: -60
+        y: -10
+        width: 120
+        height: 20
+        fill: "#2ECC71"
+        transform:
+          translate: [200, 200]
+          rotate: 90
+      - type: rect
+        x: -60
+        y: -10
+        width: 120
+        height: 20
+        fill: "#F39C12"
+        transform:
+          translate: [200, 200]
+          rotate: 135
+      # Center dot
+      - type: ellipse
+        cx: 0
+        cy: 0
+        rx: 15
+        ry: 15
+        fill: "#2C3E50"
+        transform:
+          translate: [200, 200]
+      # Scaled text
+      - type: text
+        x: 0
+        y: 0
+        content: "Transforms!"
+        font_size: 16
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#2C3E50"
+        align: "center"
+        transform:
+          translate: [200, 360]
+          scale: [1.5, 1.5]

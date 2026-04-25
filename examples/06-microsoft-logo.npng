@@ -1,0 +1,36 @@
+npng: "0.1"
+canvas:
+  width: 400
+  height: 400
+  background: "#FFFFFF"
+layers:
+  - name: "microsoft-logo"
+    elements:
+      # Red square (top-left)
+      - type: rect
+        x: 100
+        y: 100
+        width: 90
+        height: 90
+        fill: "#F25022"
+      # Green square (top-right)
+      - type: rect
+        x: 210
+        y: 100
+        width: 90
+        height: 90
+        fill: "#7FBA00"
+      # Blue square (bottom-left)
+      - type: rect
+        x: 100
+        y: 210
+        width: 90
+        height: 90
+        fill: "#00A4EF"
+      # Yellow square (bottom-right)
+      - type: rect
+        x: 210
+        y: 210
+        width: 90
+        height: 90
+        fill: "#FFB900"

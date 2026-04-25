@@ -1,0 +1,73 @@
+npng: "0.1"
+canvas:
+  width: 400
+  height: 300
+  background: "#F0F0F0"
+layers:
+  - name: "gradients"
+    elements:
+      - type: rect
+        x: 20
+        y: 20
+        width: 160
+        height: 120
+        fill:
+          type: linear-gradient
+          x1: 20
+          y1: 20
+          x2: 180
+          y2: 140
+          stops:
+            - offset: 0
+              color: "#FF6B6B"
+            - offset: 1
+              color: "#4ECDC4"
+      - type: ellipse
+        cx: 300
+        cy: 80
+        rx: 70
+        ry: 60
+        fill:
+          type: radial-gradient
+          cx: 300
+          cy: 80
+          r: 70
+          stops:
+            - offset: 0
+              color: "#FFFFFF"
+            - offset: 0.5
+              color: "#FFD93D"
+            - offset: 1
+              color: "#FF6B6B"
+  - name: "strokes"
+    elements:
+      - type: rect
+        x: 20
+        y: 170
+        width: 160
+        height: 100
+        fill: "none"
+        stroke:
+          color: "#6C5CE7"
+          width: 3
+          dash: [10, 5]
+      - type: ellipse
+        cx: 300
+        cy: 220
+        rx: 70
+        ry: 50
+        fill: "#DFE6E950"
+        stroke:
+          color: "#00B894"
+          width: 4
+  - name: "text-layer"
+    elements:
+      - type: text
+        x: 200
+        y: 290
+        content: "Gradients & Strokes"
+        font_size: 18
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#2D3436"
+        align: "center"

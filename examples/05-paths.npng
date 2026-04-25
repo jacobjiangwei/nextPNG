@@ -1,0 +1,42 @@
+npng: "0.1"
+canvas:
+  width: 400
+  height: 400
+  background: "#FFFFFF"
+layers:
+  - name: "path-demo"
+    elements:
+      # Star shape using path
+      - type: path
+        d: "M 200 50 L 230 140 L 325 140 L 248 195 L 275 285 L 200 232 L 125 285 L 152 195 L 75 140 L 170 140 Z"
+        fill:
+          type: linear-gradient
+          x1: 75
+          y1: 50
+          x2: 325
+          y2: 285
+          stops:
+            - offset: 0
+              color: "#FFD700"
+            - offset: 1
+              color: "#FF8C00"
+        stroke:
+          color: "#B8860B"
+          width: 2
+      # Triangle
+      - type: path
+        d: "M 60 320 L 120 340 L 60 360 Z"
+        fill: "#E74C3C"
+      # Arrow
+      - type: path
+        d: "M 280 310 L 340 340 L 280 370 L 295 340 Z"
+        fill: "#3498DB"
+      - type: text
+        x: 200
+        y: 390
+        content: "SVG Paths"
+        font_size: 20
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#333333"
+        align: "center"

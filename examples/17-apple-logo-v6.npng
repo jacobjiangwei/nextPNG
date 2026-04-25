@@ -1,0 +1,43 @@
+npng: "0.4"
+canvas:
+  width: 400
+  height: 500
+  background: "#FFFFFF"
+layers:
+  - name: "apple-body"
+    elements:
+      # Apple body with bite cut out via boolean subtract
+      - type: boolean
+        op: subtract
+        subjects:
+          - type: path
+            d: "M 198 125
+                C 210 115 242 96 270 90
+                C 300 84 328 92 348 114
+                C 368 140 380 180 380 225
+                C 380 272 364 318 340 358
+                C 320 390 296 414 268 436
+                C 242 454 220 462 208 466
+                C 200 468 198 468 192 466
+                C 178 462 156 454 130 436
+                C 102 414 76 390 56 358
+                C 32 318 16 272 16 225
+                C 16 180 28 140 48 114
+                C 68 92 96 84 128 90
+                C 156 96 186 115 198 125 Z"
+        clips:
+          - type: ellipse
+            cx: 356
+            cy: 220
+            rx: 68
+            ry: 88
+        fill: "#333333"
+
+      # Leaf
+      - type: path
+        d: "M 198 120
+            C 204 88 224 46 256 20
+            C 276 2 294 -6 308 -8
+            C 306 20 296 52 278 74
+            C 256 100 226 118 198 120 Z"
+        fill: "#333333"

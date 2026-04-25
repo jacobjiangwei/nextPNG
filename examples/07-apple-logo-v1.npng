@@ -1,0 +1,24 @@
+npng: "0.1"
+canvas:
+  width: 400
+  height: 500
+  background: "#FFFFFF"
+layers:
+  - name: "apple-logo"
+    elements:
+      # Apple body - the main shape
+      # Based on the classic Apple silhouette with bite
+      - type: path
+        d: "M 270 138 C 270 138 252 118 228 118 C 197 118 182 138 168 138 C 154 138 134 120 110 120 C 78 120 48 146 48 196 C 48 266 88 370 120 370 C 140 370 148 354 174 354 C 200 354 210 370 232 370 C 264 370 288 310 300 278 C 300 278 260 258 260 218 C 260 178 290 158 290 158 C 290 158 270 138 270 138 Z"
+        fill: "#333333"
+      # Leaf
+      - type: path
+        d: "M 210 118 C 210 118 212 80 240 56 C 240 56 210 58 200 90 C 196 102 198 118 210 118 Z"
+        fill: "#333333"
+      # Bite (negative space - white circle overlay)
+      - type: ellipse
+        cx: 312
+        cy: 218
+        rx: 42
+        ry: 52
+        fill: "#FFFFFF"

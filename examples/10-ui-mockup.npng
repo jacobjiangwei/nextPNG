@@ -1,0 +1,160 @@
+npng: "0.1"
+canvas:
+  width: 360
+  height: 640
+  background: "#F5F5F5"
+layers:
+  - name: "status-bar"
+    elements:
+      - type: rect
+        x: 0
+        y: 0
+        width: 360
+        height: 44
+        fill: "#6200EE"
+      - type: text
+        x: 180
+        y: 30
+        content: "My App"
+        font_size: 18
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#FFFFFF"
+        align: "center"
+  - name: "card-1"
+    elements:
+      - type: rect
+        x: 16
+        y: 64
+        width: 328
+        height: 120
+        rx: 8
+        ry: 8
+        fill: "#FFFFFF"
+        stroke:
+          color: "#E0E0E0"
+          width: 1
+      - type: ellipse
+        cx: 56
+        cy: 104
+        rx: 24
+        ry: 24
+        fill: "#6200EE"
+      - type: text
+        x: 56
+        y: 110
+        content: "A"
+        font_size: 20
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#FFFFFF"
+        align: "center"
+      - type: text
+        x: 96
+        y: 96
+        content: "Card Title"
+        font_size: 16
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#212121"
+      - type: text
+        x: 96
+        y: 118
+        content: "Supporting text goes here"
+        font_size: 13
+        font_family: "sans-serif"
+        fill: "#757575"
+      - type: rect
+        x: 228
+        y: 148
+        width: 100
+        height: 28
+        rx: 4
+        ry: 4
+        fill: "#6200EE"
+      - type: text
+        x: 278
+        y: 167
+        content: "ACTION"
+        font_size: 12
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#FFFFFF"
+        align: "center"
+  - name: "card-2"
+    elements:
+      - type: rect
+        x: 16
+        y: 200
+        width: 328
+        height: 120
+        rx: 8
+        ry: 8
+        fill: "#FFFFFF"
+        stroke:
+          color: "#E0E0E0"
+          width: 1
+      - type: ellipse
+        cx: 56
+        cy: 240
+        rx: 24
+        ry: 24
+        fill: "#03DAC5"
+      - type: text
+        x: 56
+        y: 246
+        content: "B"
+        font_size: 20
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#000000"
+        align: "center"
+      - type: text
+        x: 96
+        y: 232
+        content: "Another Card"
+        font_size: 16
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#212121"
+      - type: text
+        x: 96
+        y: 254
+        content: "More supporting text here"
+        font_size: 13
+        font_family: "sans-serif"
+        fill: "#757575"
+      - type: rect
+        x: 228
+        y: 284
+        width: 100
+        height: 28
+        rx: 4
+        ry: 4
+        fill: "#03DAC5"
+      - type: text
+        x: 278
+        y: 303
+        content: "ACTION"
+        font_size: 12
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#000000"
+        align: "center"
+  - name: "fab"
+    elements:
+      - type: ellipse
+        cx: 316
+        cy: 596
+        rx: 28
+        ry: 28
+        fill: "#6200EE"
+      - type: text
+        x: 316
+        y: 604
+        content: "+"
+        font_size: 28
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#FFFFFF"
+        align: "center"

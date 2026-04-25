@@ -1,0 +1,220 @@
+npng: "0.4"
+canvas:
+  width: 600
+  height: 700
+  background: "#F5F5F5"
+layers:
+  - name: "title"
+    elements:
+      - type: text
+        x: 300
+        y: 36
+        content: "v0.4 Feature Test"
+        font_size: 24
+        font_weight: bold
+        align: center
+        fill: "#333333"
+
+  - name: "boolean-ops"
+    elements:
+      # Label
+      - type: text
+        x: 20
+        y: 80
+        content: "Boolean Operations"
+        font_size: 16
+        font_weight: bold
+        fill: "#333333"
+
+      # Union: two overlapping circles
+      - type: text
+        x: 80
+        y: 110
+        content: "union"
+        font_size: 12
+        align: center
+        fill: "#666666"
+      - type: boolean
+        op: union
+        subjects:
+          - type: ellipse
+            cx: 60
+            cy: 160
+            rx: 40
+            ry: 40
+        clips:
+          - type: ellipse
+            cx: 100
+            cy: 160
+            rx: 40
+            ry: 40
+        fill: "#4CAF50"
+
+      # Subtract: circle minus circle
+      - type: text
+        x: 230
+        y: 110
+        content: "subtract"
+        font_size: 12
+        align: center
+        fill: "#666666"
+      - type: boolean
+        op: subtract
+        subjects:
+          - type: ellipse
+            cx: 210
+            cy: 160
+            rx: 40
+            ry: 40
+        clips:
+          - type: ellipse
+            cx: 250
+            cy: 160
+            rx: 40
+            ry: 40
+        fill: "#2196F3"
+
+      # Intersect: two overlapping circles
+      - type: text
+        x: 380
+        y: 110
+        content: "intersect"
+        font_size: 12
+        align: center
+        fill: "#666666"
+      - type: boolean
+        op: intersect
+        subjects:
+          - type: ellipse
+            cx: 360
+            cy: 160
+            rx: 40
+            ry: 40
+        clips:
+          - type: ellipse
+            cx: 400
+            cy: 160
+            rx: 40
+            ry: 40
+        fill: "#FF9800"
+
+      # Exclude: two overlapping circles
+      - type: text
+        x: 530
+        y: 110
+        content: "exclude"
+        font_size: 12
+        align: center
+        fill: "#666666"
+      - type: boolean
+        op: exclude
+        subjects:
+          - type: ellipse
+            cx: 510
+            cy: 160
+            rx: 40
+            ry: 40
+        clips:
+          - type: ellipse
+            cx: 550
+            cy: 160
+            rx: 40
+            ry: 40
+        fill: "#9C27B0"
+
+  - name: "fill-rule"
+    elements:
+      - type: text
+        x: 20
+        y: 240
+        content: "Fill Rule (evenodd donut)"
+        font_size: 16
+        font_weight: bold
+        fill: "#333333"
+      # Donut shape: outer circle + inner circle with evenodd fill rule
+      - type: path
+        d: "M 100 320 A 50 50 0 1 1 100 319.99 Z M 100 295 A 25 25 0 1 0 100 295.01 Z"
+        fill: "#E91E63"
+        fill_rule: evenodd
+
+  - name: "arcs"
+    elements:
+      - type: text
+        x: 250
+        y: 240
+        content: "SVG Arcs"
+        font_size: 16
+        font_weight: bold
+        fill: "#333333"
+      # Pac-man shape using arcs
+      - type: path
+        d: "M 350 300 L 380 280 A 40 40 0 1 1 380 320 Z"
+        fill: "#FFEB3B"
+
+  - name: "smooth-curves"
+    elements:
+      - type: text
+        x: 20
+        y: 420
+        content: "Smooth Curves (S command)"
+        font_size: 16
+        font_weight: bold
+        fill: "#333333"
+      # S-curve using smooth cubic bezier
+      - type: path
+        d: "M 30 480 C 80 440 120 520 170 480 S 260 440 300 480"
+        fill: "none"
+        stroke:
+          color: "#00BCD4"
+          width: 4
+
+  - name: "per-element-opacity"
+    elements:
+      - type: text
+        x: 350
+        y: 420
+        content: "Per-Element Opacity"
+        font_size: 16
+        font_weight: bold
+        fill: "#333333"
+      - type: rect
+        x: 360
+        y: 440
+        width: 80
+        height: 80
+        fill: "#F44336"
+      - type: rect
+        x: 400
+        y: 460
+        width: 80
+        height: 80
+        fill: "#2196F3"
+        opacity: 0.5
+
+  - name: "transform-origin"
+    elements:
+      - type: text
+        x: 20
+        y: 570
+        content: "Transform Origin (rotation)"
+        font_size: 16
+        font_weight: bold
+        fill: "#333333"
+      # Rect rotated around its center
+      - type: rect
+        x: 50
+        y: 600
+        width: 60
+        height: 30
+        fill: "#795548"
+        transform:
+          rotate: 30
+          origin: [80, 615]
+      # Reference unrotated rect
+      - type: rect
+        x: 50
+        y: 600
+        width: 60
+        height: 30
+        fill: "#795548"
+        opacity: 0.3

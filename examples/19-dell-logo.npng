@@ -1,0 +1,73 @@
+npng: "0.4"
+canvas:
+  width: 400
+  height: 400
+  background: "#FFFFFF"
+layers:
+  # Circle ring (outer - inner via boolean subtract)
+  - name: "circle-ring"
+    elements:
+      - type: boolean
+        op: subtract
+        subjects:
+          - type: ellipse
+            cx: 200
+            cy: 200
+            rx: 160
+            ry: 160
+        clips:
+          - type: ellipse
+            cx: 200
+            cy: 200
+            rx: 140
+            ry: 140
+        fill: "#007DB8"
+
+  # "DELL" text
+  # Dell logo: bold sans-serif, the E is tilted about 15 degrees
+  - name: "text-D"
+    elements:
+      - type: text
+        x: 112
+        y: 218
+        content: "D"
+        font_size: 68
+        font_weight: bold
+        font_family: "sans-serif"
+        fill: "#007DB8"
+
+  - name: "text-E"
+    elements:
+      - type: text
+        x: 158
+        y: 218
+        content: "E"
+        font_size: 68
+        font_weight: bold
+        font_family: "sans-serif"
+        fill: "#007DB8"
+        transform:
+          rotate: -15
+          origin: [175, 190]
+
+  - name: "text-L1"
+    elements:
+      - type: text
+        x: 205
+        y: 218
+        content: "L"
+        font_size: 68
+        font_weight: bold
+        font_family: "sans-serif"
+        fill: "#007DB8"
+
+  - name: "text-L2"
+    elements:
+      - type: text
+        x: 245
+        y: 218
+        content: "L"
+        font_size: 68
+        font_weight: bold
+        font_family: "sans-serif"
+        fill: "#007DB8"
