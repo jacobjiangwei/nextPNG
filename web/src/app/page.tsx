@@ -386,289 +386,93 @@ layers:
         align: center
 `;
 
-const NEWPNG_FRUIT_MARK_YAML = `npng: "0.4"
+const NEWPNG_SEED_MARK_YAML = `npng: "0.4"
 canvas:
   width: 760
   height: 620
-  background: "#F5F7FB"
+  background: "#FFFFFF"
 layers:
-  - name: "paper background"
+  - id: clean-background
+    name: "clean background"
     elements:
       - type: rect
+        id: white-canvas
+        name: White canvas
         x: 0
         y: 0
         width: 760
         height: 620
-        fill:
-          type: linear-gradient
-          x1: 0
-          y1: 0
-          x2: 760
-          y2: 620
-          stops:
-            - offset: 0
-              color: "#FFFFFF"
-            - offset: 0.55
-              color: "#F4F7FB"
-            - offset: 1
-              color: "#E7EDF7"
-      - type: ellipse
-        cx: 376
-        cy: 326
-        rx: 270
-        ry: 280
-        fill:
-          type: radial-gradient
-          cx: 376
-          cy: 290
-          r: 330
-          stops:
-            - offset: 0
-              color: "#FFFFFF"
-            - offset: 0.7
-              color: "#E2E8F055"
-            - offset: 1
-              color: "#CBD5E100"
+        fill: "#FFFFFF"
 
-  - name: "ground shadow"
-    opacity: 0.58
+  - id: mark-shadow
+    name: "soft presentation shadow"
+    opacity: 0.18
     filters:
       - type: blur
         radius: 18
     elements:
       - type: ellipse
-        cx: 383
-        cy: 525
-        rx: 172
-        ry: 34
-        fill: "#0F172A55"
-      - type: ellipse
-        cx: 398
-        cy: 512
-        rx: 122
+        id: base-shadow
+        name: Base shadow
+        cx: 382
+        cy: 538
+        rx: 150
         ry: 20
-        fill: "#33415555"
-
-  - name: "body outer glow"
-    opacity: 0.36
-    filters:
-      - type: blur
-        radius: 16
-    elements:
-      - type: path
-        id: fruit-glow-silhouette
-        name: Pear-drop glow silhouette
-        d: "M 384 142 C 318 142 253 186 219 255 C 174 346 209 470 300 530 C 337 554 367 548 386 522 C 405 548 437 552 474 526 C 563 463 586 335 535 246 C 499 183 447 142 384 142 Z"
         fill: "#0F172A"
 
-  - name: "main fruit body"
+  - id: newpng-seed-mark
+    name: "NewPNG seed mark"
     filters:
       - type: drop-shadow
         dx: 0
-        dy: 22
+        dy: 16
         radius: 28
-        color: "#0F172A4D"
+        color: "#02061722"
     elements:
       - type: path
-        id: fruit-body-primary
-        name: Original pear-drop body
-        d: "M 384 142 C 318 142 253 186 219 255 C 174 346 209 470 300 530 C 337 554 367 548 386 522 C 405 548 437 552 474 526 C 563 463 586 335 535 246 C 499 183 447 142 384 142 Z"
-        fills:
-          - fill:
-              type: linear-gradient
-              x1: 205
-              y1: 170
-              x2: 555
-              y2: 560
-              stops:
-                - offset: 0
-                  color: "#475569"
-                - offset: 0.26
-                  color: "#111827"
-                - offset: 0.68
-                  color: "#030712"
-                - offset: 1
-                  color: "#334155"
-          - fill:
-              type: radial-gradient
-              cx: 285
-              cy: 245
-              r: 230
-              stops:
-                - offset: 0
-                  color: "#FFFFFF55"
-                - offset: 0.34
-                  color: "#FFFFFF18"
-                - offset: 0.75
-                  color: "#FFFFFF00"
-            opacity: 0.9
-          - fill:
-              type: radial-gradient
-              cx: 495
-              cy: 500
-              r: 210
-              stops:
-                - offset: 0
-                  color: "#94A3B822"
-                - offset: 1
-                  color: "#94A3B800"
-            opacity: 0.85
-        strokes:
-          - color: "#FFFFFF7A"
-            width: 2
-          - color: "#020617"
-            width: 1
-
-  - name: "negative-space ribbon"
-    elements:
+        id: seed-silhouette
+        name: Single continuous seed silhouette
+        d: "M 380 84 C 303 122 242 202 218 301 C 195 395 224 494 298 548 C 342 580 418 580 462 548 C 536 494 565 395 542 301 C 518 202 457 122 380 84 Z"
+        fill: "#05070D"
       - type: path
-        id: inner-ribbon-cut
-        name: Background-colored inner ribbon
-        d: "M 414 190 C 359 229 332 292 344 363 C 354 420 384 464 429 493 C 376 493 323 460 296 405 C 257 326 287 229 367 178 C 386 166 407 167 414 190 Z"
-        fill: "#F5F7FB"
-      - type: path
-        id: ribbon-inner-shadow
-        name: Ribbon inner shadow edge
-        d: "M 407 199 C 350 247 331 326 360 402"
+        id: inner-n-ribbon-left
+        name: Negative N ribbon left stroke
+        d: "M 296 448 C 312 373 326 292 344 214"
         fill: "none"
         stroke:
-          color: "#CBD5E1B0"
-          width: 4
+          color: "#FFFFFF"
+          width: 42
           cap: round
-
-  - name: "body sculpting"
-    elements:
+          join: round
       - type: path
-        id: fruit-left-gloss
-        name: Wide left gloss
-        d: "M 247 248 C 285 184 354 163 384 190 C 321 222 282 289 271 374 C 238 329 229 282 247 248 Z"
-        fill:
-          type: linear-gradient
-          x1: 228
-          y1: 184
-          x2: 360
-          y2: 332
-          stops:
-            - offset: 0
-              color: "#FFFFFF7D"
-            - offset: 0.42
-              color: "#FFFFFF2E"
-            - offset: 1
-              color: "#FFFFFF00"
-      - type: path
-        id: lower-smile-gloss
-        name: Lower contour gloss
-        d: "M 286 486 C 324 517 379 528 436 500"
+        id: inner-n-ribbon-diagonal
+        name: Negative N ribbon diagonal stroke
+        d: "M 347 214 C 379 318 421 403 474 480"
         fill: "none"
         stroke:
-          color: "#FFFFFF3D"
-          width: 5
+          color: "#FFFFFF"
+          width: 42
           cap: round
+          join: round
       - type: path
-        id: right-depth-curve
-        name: Right depth contour
-        d: "M 517 318 C 524 404 482 482 421 518"
+        id: inner-n-ribbon-right
+        name: Negative N ribbon right stroke
+        d: "M 474 480 C 494 390 507 300 514 214"
         fill: "none"
         stroke:
-          color: "#64748B45"
-          width: 5
+          color: "#FFFFFF"
+          width: 42
           cap: round
+          join: round
+      - type: ellipse
+        id: vector-node-accent
+        name: Vector node accent
+        cx: 514
+        cy: 214
+        rx: 15
+        ry: 15
+        fill: "#38BDF8"
 
-  - name: "orbit crown"
-    filters:
-      - type: drop-shadow
-        dx: 0
-        dy: 10
-        radius: 14
-        color: "#0F172A45"
-    elements:
-      - type: path
-        id: floating-stem-capsule
-        name: Floating asymmetric capsule
-        d: "M 357 146 C 351 105 384 75 429 72 C 431 121 403 159 366 176 Z"
-        fills:
-          - fill:
-              type: linear-gradient
-              x1: 366
-              y1: 68
-              x2: 395
-              y2: 202
-              stops:
-                - offset: 0
-                  color: "#64748B"
-                - offset: 0.55
-                  color: "#111827"
-                - offset: 1
-                  color: "#020617"
-          - fill:
-              type: radial-gradient
-              cx: 385
-              cy: 97
-              r: 70
-              stops:
-                - offset: 0
-                  color: "#FFFFFF42"
-                - offset: 1
-                  color: "#FFFFFF00"
-            opacity: 0.8
-        stroke:
-          color: "#FFFFFF70"
-          width: 1.5
-      - type: path
-        id: orbit-sail
-        name: Orbit sail
-        d: "M 425 129 C 477 82 552 78 610 122 C 559 177 485 177 425 129 Z"
-        fills:
-          - fill:
-              type: linear-gradient
-              x1: 398
-              y1: 154
-              x2: 562
-              y2: 82
-              stops:
-                - offset: 0
-                  color: "#1F2937"
-                - offset: 0.46
-                  color: "#020617"
-                - offset: 1
-                  color: "#475569"
-          - fill:
-              type: radial-gradient
-              cx: 505
-              cy: 90
-              r: 100
-              stops:
-                - offset: 0
-                  color: "#FFFFFF4A"
-                - offset: 0.55
-                  color: "#FFFFFF10"
-                - offset: 1
-                  color: "#FFFFFF00"
-            opacity: 0.9
-        stroke:
-          color: "#FFFFFF72"
-          width: 2
-      - type: path
-        id: orbit-sail-vein
-        name: Orbit sail highlight
-        d: "M 454 129 C 497 119 548 117 588 124"
-        fill: "none"
-        stroke:
-          color: "#FFFFFF6B"
-          width: 2.4
-          cap: round
-
-  - name: "caption"
-    opacity: 0.8
-    elements:
-      - type: text
-        x: 380
-        y: 590
-        content: "Original NewPNG fruit mark benchmark"
-        font_size: 13
-        font_family: "sans-serif"
-        fill: "#64748B"
-        align: center
 `;
 
 const FOUR_TILE_WINDOW_MARK_YAML = `npng: "0.4"
@@ -978,8 +782,8 @@ const EXAMPLES = [
     yaml: SATISFACTION_PEACH_YAML,
   },
   {
-    name: "NewPNG Fruit Mark",
-    yaml: NEWPNG_FRUIT_MARK_YAML,
+    name: "NewPNG Seed Mark",
+    yaml: NEWPNG_SEED_MARK_YAML,
   },
   {
     name: "Four Tile Window Mark",

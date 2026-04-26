@@ -1,0 +1,86 @@
+npng: "0.4"
+canvas:
+  width: 760
+  height: 620
+  background: "#FFFFFF"
+layers:
+  - id: clean-background
+    name: "clean background"
+    elements:
+      - type: rect
+        id: white-canvas
+        name: White canvas
+        x: 0
+        y: 0
+        width: 760
+        height: 620
+        fill: "#FFFFFF"
+
+  - id: mark-shadow
+    name: "soft presentation shadow"
+    opacity: 0.18
+    filters:
+      - type: blur
+        radius: 18
+    elements:
+      - type: ellipse
+        id: base-shadow
+        name: Base shadow
+        cx: 382
+        cy: 538
+        rx: 150
+        ry: 20
+        fill: "#0F172A"
+
+  - id: newpng-seed-mark
+    name: "NewPNG seed mark"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 16
+        radius: 28
+        color: "#02061722"
+    elements:
+      - type: path
+        id: seed-silhouette
+        name: Single continuous seed silhouette
+        d: "M 380 84 C 303 122 242 202 218 301 C 195 395 224 494 298 548 C 342 580 418 580 462 548 C 536 494 565 395 542 301 C 518 202 457 122 380 84 Z"
+        fill: "#05070D"
+      - type: path
+        id: inner-n-ribbon-left
+        name: Negative N ribbon left stroke
+        d: "M 296 448 C 312 373 326 292 344 214"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF"
+          width: 42
+          cap: round
+          join: round
+      - type: path
+        id: inner-n-ribbon-diagonal
+        name: Negative N ribbon diagonal stroke
+        d: "M 347 214 C 379 318 421 403 474 480"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF"
+          width: 42
+          cap: round
+          join: round
+      - type: path
+        id: inner-n-ribbon-right
+        name: Negative N ribbon right stroke
+        d: "M 474 480 C 494 390 507 300 514 214"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF"
+          width: 42
+          cap: round
+          join: round
+      - type: ellipse
+        id: vector-node-accent
+        name: Vector node accent
+        cx: 514
+        cy: 214
+        rx: 15
+        ry: 15
+        fill: "#38BDF8"
