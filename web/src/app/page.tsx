@@ -10,7 +10,247 @@ import CanvasPreview from "../components/CanvasPreview";
 import PropertyPanel from "../components/PropertyPanel";
 import YamlEditor from "../components/YamlEditor";
 
+const ORIGINAL_APPLE_MARK_YAML = `npng: "0.4"
+canvas:
+  width: 700
+  height: 620
+  background: "#0B1020"
+layers:
+  - name: "aurora background"
+    opacity: 0.75
+    blend_mode: screen
+    filters:
+      - type: blur
+        radius: 38
+    elements:
+      - type: ellipse
+        cx: 210
+        cy: 260
+        rx: 230
+        ry: 170
+        fill:
+          type: radial-gradient
+          cx: 210
+          cy: 260
+          r: 230
+          stops:
+            - offset: 0
+              color: "#FF3B7A90"
+            - offset: 1
+              color: "#FF3B7A00"
+      - type: ellipse
+        cx: 500
+        cy: 260
+        rx: 220
+        ry: 160
+        fill:
+          type: radial-gradient
+          cx: 500
+          cy: 260
+          r: 220
+          stops:
+            - offset: 0
+              color: "#FFB02075"
+            - offset: 1
+              color: "#FFB02000"
+      - type: ellipse
+        cx: 360
+        cy: 170
+        rx: 200
+        ry: 120
+        fill:
+          type: radial-gradient
+          cx: 360
+          cy: 170
+          r: 200
+          stops:
+            - offset: 0
+              color: "#6C63FF70"
+            - offset: 1
+              color: "#6C63FF00"
+
+  - name: "soft ground shadow"
+    opacity: 0.7
+    filters:
+      - type: blur
+        radius: 22
+    elements:
+      - type: ellipse
+        cx: 352
+        cy: 474
+        rx: 168
+        ry: 35
+        fill: "#00000080"
+
+  - name: "apple glow"
+    opacity: 0.55
+    blend_mode: screen
+    filters:
+      - type: blur
+        radius: 18
+    elements:
+      - type: path
+        d: "M 305 183 C 263 145 202 148 161 190 C 118 234 116 311 148 388 C 178 460 229 511 268 524 C 285 529 296 515 312 515 C 328 515 342 531 361 523 C 406 504 451 445 480 374 C 512 294 491 219 446 183 C 407 151 345 151 305 183 Z"
+        fill: "#FF5A7A"
+
+  - name: "apple body"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 18
+        radius: 28
+        color: "#00000065"
+    elements:
+      - type: path
+        d: "M 305 183 C 263 145 202 148 161 190 C 118 234 116 311 148 388 C 178 460 229 511 268 524 C 285 529 296 515 312 515 C 328 515 342 531 361 523 C 406 504 451 445 480 374 C 512 294 491 219 446 183 C 407 151 345 151 305 183 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 168
+              y1: 155
+              x2: 485
+              y2: 520
+              stops:
+                - offset: 0
+                  color: "#FF3B6B"
+                - offset: 0.48
+                  color: "#FF5F2E"
+                - offset: 1
+                  color: "#FFD166"
+          - fill:
+              type: radial-gradient
+              cx: 246
+              cy: 229
+              r: 210
+              stops:
+                - offset: 0
+                  color: "#FFFFFF65"
+                - offset: 0.38
+                  color: "#FFFFFF12"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.65
+        strokes:
+          - color: "#FFFFFF45"
+            width: 2
+          - color: "#22081655"
+            width: 1
+
+  - name: "bite cutout"
+    elements:
+      - type: ellipse
+        cx: 474
+        cy: 259
+        rx: 52
+        ry: 58
+        fill: "#0B1020"
+      - type: ellipse
+        cx: 491
+        cy: 306
+        rx: 43
+        ry: 45
+        fill: "#0B1020"
+      - type: ellipse
+        cx: 455
+        cy: 326
+        rx: 34
+        ry: 34
+        fill: "#0B1020"
+
+  - name: "surface highlights"
+    opacity: 0.78
+    elements:
+      - type: path
+        d: "M 196 220 C 222 185 264 173 302 195 C 253 207 217 245 198 302 C 190 274 187 245 196 220 Z"
+        fill:
+          type: linear-gradient
+          x1: 190
+          y1: 178
+          x2: 305
+          y2: 304
+          stops:
+            - offset: 0
+              color: "#FFFFFF85"
+            - offset: 1
+              color: "#FFFFFF00"
+      - type: path
+        d: "M 253 485 C 285 505 319 506 354 486"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF45"
+          width: 4
+          cap: round
+
+  - name: "stem and leaf"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 6
+        radius: 10
+        color: "#00000050"
+    elements:
+      - type: path
+        d: "M 314 179 C 310 142 322 112 348 90 C 358 105 359 140 337 184 Z"
+        fill:
+          type: linear-gradient
+          x1: 322
+          y1: 90
+          x2: 345
+          y2: 184
+          stops:
+            - offset: 0
+              color: "#8B5E34"
+            - offset: 1
+              color: "#3F2419"
+      - type: path
+        d: "M 335 139 C 366 82 429 56 488 80 C 468 136 406 172 335 139 Z"
+        fill:
+          type: linear-gradient
+          x1: 344
+          y1: 142
+          x2: 480
+          y2: 70
+          stops:
+            - offset: 0
+              color: "#7CFF8D"
+            - offset: 0.55
+              color: "#2ED573"
+            - offset: 1
+              color: "#0B8F5A"
+        stroke:
+          color: "#D5FFD880"
+          width: 1.5
+      - type: path
+        d: "M 360 132 C 397 116 426 96 459 82"
+        fill: "none"
+        stroke:
+          color: "#E9FFE880"
+          width: 2
+          cap: round
+
+  - name: "caption"
+    elements:
+      - type: text
+        x: 350
+        y: 575
+        font_size: 16
+        font_family: "sans-serif"
+        align: center
+        spans:
+          - text: "Original "
+            fill: "#94A3B8"
+          - text: "NewPNG"
+            bold: true
+            fill: "#FFFFFF"
+          - text: " apple mark demo"
+            fill: "#94A3B8"
+`;
+
 const EXAMPLES = [
+  {
+    name: "Original Apple Mark",
+    yaml: ORIGINAL_APPLE_MARK_YAML,
+  },
   {
     name: "Hello World",
     yaml: `npng: "0.1"\ncanvas:\n  width: 400\n  height: 300\n  background: "#FFFFFF"\nlayers:\n  - name: "shapes"\n    elements:\n      - type: rect\n        x: 30\n        y: 30\n        width: 120\n        height: 80\n        fill: "#E74C3C"\n      - type: ellipse\n        cx: 280\n        cy: 100\n        rx: 60\n        ry: 40\n        fill: "#3498DB"\n      - type: text\n        x: 200\n        y: 240\n        content: "Hello NewPNG!"\n        font_size: 20\n        font_family: "sans-serif"\n        font_weight: "bold"\n        fill: "#FFFFFF"\n        align: "center"`,
