@@ -10,6 +10,355 @@ import CanvasPreview from "../components/CanvasPreview";
 import PropertyPanel from "../components/PropertyPanel";
 import YamlEditor from "../components/YamlEditor";
 
+const SATISFACTION_PEACH_YAML = `npng: "0.4"
+canvas:
+  width: 760
+  height: 620
+  background: "#FFF5EC"
+layers:
+  - name: "warm studio background"
+    elements:
+      - type: rect
+        x: 0
+        y: 0
+        width: 760
+        height: 620
+        fill:
+          type: linear-gradient
+          x1: 0
+          y1: 0
+          x2: 760
+          y2: 620
+          stops:
+            - offset: 0
+              color: "#FFFDF9"
+            - offset: 0.45
+              color: "#FFF1E2"
+            - offset: 1
+              color: "#FFE0CA"
+      - type: ellipse
+        cx: 225
+        cy: 170
+        rx: 210
+        ry: 155
+        fill:
+          type: radial-gradient
+          cx: 225
+          cy: 170
+          r: 230
+          stops:
+            - offset: 0
+              color: "#FFD1DC80"
+            - offset: 1
+              color: "#FFD1DC00"
+      - type: ellipse
+        cx: 548
+        cy: 220
+        rx: 205
+        ry: 145
+        fill:
+          type: radial-gradient
+          cx: 548
+          cy: 220
+          r: 220
+          stops:
+            - offset: 0
+              color: "#FFE28A75"
+            - offset: 1
+              color: "#FFE28A00"
+
+  - name: "soft shadow"
+    opacity: 0.62
+    filters:
+      - type: blur
+        radius: 18
+    elements:
+      - type: ellipse
+        cx: 382
+        cy: 527
+        rx: 188
+        ry: 34
+        fill: "#B4530950"
+      - type: ellipse
+        cx: 380
+        cy: 510
+        rx: 125
+        ry: 20
+        fill: "#7C2D1250"
+
+  - name: "peach aura"
+    opacity: 0.58
+    blend_mode: screen
+    filters:
+      - type: blur
+        radius: 20
+    elements:
+      - type: path
+        d: "M 371 176 C 322 124 232 138 192 214 C 147 299 180 418 274 494 C 313 526 346 545 382 545 C 418 545 455 524 494 488 C 587 403 615 291 565 211 C 522 142 439 126 390 176 C 384 182 377 182 371 176 Z"
+        fill: "#FF8FAB"
+
+  - name: "peach body"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 20
+        radius: 28
+        color: "#9A34124D"
+    elements:
+      - type: path
+        d: "M 371 176 C 322 124 232 138 192 214 C 147 299 180 418 274 494 C 313 526 346 545 382 545 C 418 545 455 524 494 488 C 587 403 615 291 565 211 C 522 142 439 126 390 176 C 384 182 377 182 371 176 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 190
+              y1: 145
+              x2: 565
+              y2: 540
+              stops:
+                - offset: 0
+                  color: "#FFD4A8"
+                - offset: 0.28
+                  color: "#FF9F8E"
+                - offset: 0.58
+                  color: "#FF6F91"
+                - offset: 1
+                  color: "#FFB86B"
+          - fill:
+              type: radial-gradient
+              cx: 286
+              cy: 240
+              r: 260
+              stops:
+                - offset: 0
+                  color: "#FFFFFF78"
+                - offset: 0.38
+                  color: "#FFFFFF1E"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.85
+          - fill:
+              type: radial-gradient
+              cx: 492
+              cy: 420
+              r: 210
+              stops:
+                - offset: 0
+                  color: "#E11D4855"
+                - offset: 0.65
+                  color: "#E11D4810"
+                - offset: 1
+                  color: "#E11D4800"
+            opacity: 0.75
+        strokes:
+          - color: "#FFFFFF86"
+            width: 2
+          - color: "#C2410C55"
+            width: 1
+
+  - name: "fruit sculpting"
+    elements:
+      - type: path
+        d: "M 376 188 C 350 244 346 308 364 374 C 379 429 377 487 347 535"
+        fill: "none"
+        stroke:
+          color: "#D9486A90"
+          width: 5
+          cap: round
+      - type: path
+        d: "M 390 188 C 428 251 433 326 407 391 C 388 439 387 497 418 536"
+        fill: "none"
+        stroke:
+          color: "#FFDDAD70"
+          width: 4
+          cap: round
+      - type: path
+        d: "M 235 228 C 267 181 330 166 366 203 C 308 218 255 277 231 360 C 211 302 212 255 235 228 Z"
+        fill:
+          type: linear-gradient
+          x1: 228
+          y1: 178
+          x2: 368
+          y2: 360
+          stops:
+            - offset: 0
+              color: "#FFFFFF8A"
+            - offset: 0.48
+              color: "#FFFFFF30"
+            - offset: 1
+              color: "#FFFFFF00"
+      - type: path
+        d: "M 252 463 C 291 506 337 526 383 527 C 431 527 474 507 516 463"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF45"
+          width: 5
+          cap: round
+
+  - name: "satisfied face"
+    elements:
+      - type: ellipse
+        cx: 287
+        cy: 365
+        rx: 42
+        ry: 26
+        fill:
+          type: radial-gradient
+          cx: 287
+          cy: 365
+          r: 48
+          stops:
+            - offset: 0
+              color: "#FF5C8A66"
+            - offset: 1
+              color: "#FF5C8A00"
+      - type: ellipse
+        cx: 476
+        cy: 365
+        rx: 42
+        ry: 26
+        fill:
+          type: radial-gradient
+          cx: 476
+          cy: 365
+          r: 48
+          stops:
+            - offset: 0
+              color: "#FF5C8A66"
+            - offset: 1
+              color: "#FF5C8A00"
+      - type: path
+        d: "M 265 330 C 280 344 303 344 319 329"
+        fill: "none"
+        stroke:
+          color: "#7C2D12"
+          width: 6
+          cap: round
+      - type: path
+        d: "M 444 329 C 460 344 484 344 500 330"
+        fill: "none"
+        stroke:
+          color: "#7C2D12"
+          width: 6
+          cap: round
+      - type: path
+        d: "M 333 400 C 353 425 408 425 430 400"
+        fill: "none"
+        stroke:
+          color: "#7C2D12"
+          width: 6
+          cap: round
+      - type: path
+        d: "M 358 413 C 374 424 391 424 407 413"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF70"
+          width: 2.5
+          cap: round
+
+  - name: "stem and leaves"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 8
+        radius: 12
+        color: "#78350F40"
+    elements:
+      - type: path
+        d: "M 372 182 C 359 143 373 105 411 82 C 429 120 415 162 389 196 Z"
+        fill:
+          type: linear-gradient
+          x1: 372
+          y1: 82
+          x2: 406
+          y2: 196
+          stops:
+            - offset: 0
+              color: "#9A5A22"
+            - offset: 1
+              color: "#5C2E0B"
+        stroke:
+          color: "#FED7AA90"
+          width: 1.5
+      - type: path
+        d: "M 392 147 C 430 88 506 66 572 100 C 541 165 462 194 392 147 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 396
+              y1: 152
+              x2: 564
+              y2: 94
+              stops:
+                - offset: 0
+                  color: "#65A30D"
+                - offset: 0.48
+                  color: "#16A34A"
+                - offset: 1
+                  color: "#BBF7D0"
+          - fill:
+              type: radial-gradient
+              cx: 510
+              cy: 96
+              r: 95
+              stops:
+                - offset: 0
+                  color: "#FFFFFF66"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.75
+        stroke:
+          color: "#F0FDF4A0"
+          width: 2
+      - type: path
+        d: "M 424 141 C 465 126 511 105 548 99"
+        fill: "none"
+        stroke:
+          color: "#DCFCE790"
+          width: 2.4
+          cap: round
+
+  - name: "sparkles"
+    opacity: 0.9
+    elements:
+      - type: path
+        d: "M 159 196 L 171 222 L 198 234 L 171 246 L 159 272 L 147 246 L 120 234 L 147 222 Z"
+        fill: "#FFFFFFAA"
+        stroke:
+          color: "#FDBA74"
+          width: 1.2
+      - type: path
+        d: "M 604 346 L 613 365 L 633 374 L 613 383 L 604 403 L 595 383 L 575 374 L 595 365 Z"
+        fill: "#FFFFFFAA"
+        stroke:
+          color: "#FDBA74"
+          width: 1.2
+      - type: ellipse
+        cx: 185
+        cy: 396
+        rx: 8
+        ry: 8
+        fill: "#FFFFFFB0"
+      - type: ellipse
+        cx: 590
+        cy: 229
+        rx: 7
+        ry: 7
+        fill: "#FFFFFFB0"
+
+  - name: "caption"
+    opacity: 0.82
+    elements:
+      - type: text
+        x: 380
+        y: 586
+        content: "Satisfaction Peach"
+        font_size: 15
+        font_family: "sans-serif"
+        font_weight: "bold"
+        fill: "#9A3412"
+        align: center
+`;
+
 const ORIGINAL_APPLE_MARK_YAML = `npng: "0.4"
 canvas:
   width: 760
@@ -581,6 +930,10 @@ layers:
 `;
 
 const EXAMPLES = [
+  {
+    name: "Satisfaction Peach",
+    yaml: SATISFACTION_PEACH_YAML,
+  },
   {
     name: "Original Apple-Style Mark",
     yaml: ORIGINAL_APPLE_MARK_YAML,
