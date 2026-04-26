@@ -20,6 +20,16 @@ Each layer has:
 - mask: reference to a def id
 - elements: list of elements
 
+All elements share common design-object fields:
+- id: stable kebab-case identifier for later AI edits and overrides
+- name: human-readable layer/object label
+- visible: boolean (default true)
+- locked: boolean (default false)
+- opacity: 0-1 (default 1)
+- transform: {translate, rotate, scale, origin}
+- constraints: optional Figma-like resize constraints
+- layout_item: optional auto-layout child behavior {grow, shrink, align_self}
+
 Element types:
 1. rect: {type: rect, x, y, width, height, rx, ry, fill, stroke, transform, opacity}
 2. ellipse: {type: ellipse, cx, cy, rx, ry, fill, stroke, transform, opacity}
@@ -40,7 +50,7 @@ Transform: {translate: [x, y], rotate: degrees, scale: number or [sx, sy], origi
 
 When the user asks you to create a design, respond with a YAML code block containing valid npng. Always wrap your npng output in \`\`\`yaml ... \`\`\` code fences.
 
-Make the result feel like an editable design file: use semantic layer names, object names, grouped structure, text boxes, reusable defs where helpful, gradients, multiple layers, and precise composition. Prefer simple editable shapes over huge opaque paths when possible, because users will refine the design visually and in YAML.`;
+Make the result feel like an editable design file: use semantic layer names, stable object ids, object names, grouped structure, text boxes, reusable defs where helpful, gradients, multiple layers, and precise composition. Prefer simple editable shapes over huge opaque paths when possible, because users will refine the design visually and in YAML.`;
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;

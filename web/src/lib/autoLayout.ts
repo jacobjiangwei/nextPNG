@@ -21,16 +21,48 @@ export function computeLayout(frame: FrameElement): void {
   const contentH = frameH - padding * 2;
 
   let offset = contentStart;
-  const children = frame.children;
+  const children = frame.children.filter((child) => child.visible !== false);
+  if (children.length === 0) return;
 
-  // Calculate total size of children for justify
-  let totalChildSize = 0;
-  for (const child of children) {
-    const c = child as LayoutElement;
-    totalChildSize += isHorizontal ? (c.width ?? 0) : (c.height ?? 0);
-  }
   const totalGap = gap * (children.length - 1);
-  const freeSpace = (isHorizontal ? contentW : contentH) - totalChildSize - totalGap;
+  const containerMainSize = isHorizontal ? contentW : contentH;
+  const baseMainSizes = children.map((child) => {
+    const c = child as LayoutElement;
+    return isHorizontal ? (c.width ?? 0) : (c.height ?? 0);
+  });
+  const baseTotalChildSize = baseMainSizes.reduce((sum, size) => sum + size, 0);
+  let freeSpace = containerMainSize - baseTotalChildSize - totalGap;
+  const growTotal = children.reduce((sum, child) => sum + (child.layout_item?.grow ?? 0), 0);
+  let mainSizes = [...baseMainSizes];
+  if (freeSpace > 0 && growTotal > 0) {
+    mainSizes = mainSizes.map((size, index) => {
+      const grow = children[index].layout_item?.grow ?? 0;
+      return size + freeSpace * (grow / growTotal);
+    });
+  } else if (freeSpace < 0) {
+    let deficit = -freeSpace;
+    let shrinkable = children
+      .map((child, index) => ({ index, factor: child.layout_item?.shrink ?? 0 }))
+      .filter((item) => item.factor > 0 && mainSizes[item.index] > 0);
+
+    while (deficit > 0.001 && shrinkable.length > 0) {
+      const weightTotal = shrinkable.reduce((sum, item) => sum + mainSizes[item.index] * item.factor, 0);
+      if (weightTotal <= 0) break;
+      let consumed = 0;
+      for (const item of shrinkable) {
+        const size = mainSizes[item.index];
+        const reduction = deficit * ((size * item.factor) / weightTotal);
+        const applied = Math.min(size, reduction);
+        mainSizes[item.index] = size - applied;
+        consumed += applied;
+      }
+      if (consumed <= 0.001) break;
+      deficit -= consumed;
+      shrinkable = shrinkable.filter((item) => mainSizes[item.index] > 0.001);
+    }
+  }
+  const totalChildSize = mainSizes.reduce((sum, size) => sum + size, 0);
+  freeSpace = containerMainSize - totalChildSize - totalGap;
 
   let startOffset = contentStart;
   let effectiveGap = gap;
@@ -43,14 +75,18 @@ export function computeLayout(frame: FrameElement): void {
   }
   offset = startOffset;
 
-  for (const child of children) {
+  for (const [index, child] of children.entries()) {
     const c = child as LayoutElement;
+    if (isHorizontal) c.width = mainSizes[index];
+    else c.height = mainSizes[index];
     const childW = c.width ?? 0;
     const childH = c.height ?? 0;
+    const align = child.layout_item?.align_self && child.layout_item.align_self !== "auto"
+      ? child.layout_item.align_self
+      : layout.align_items ?? "start";
 
     if (isHorizontal) {
       c.x = (frame.x ?? 0) + offset;
-      const align = layout.align_items ?? "start";
       if (align === "start") c.y = (frame.y ?? 0) + padding;
       else if (align === "center") c.y = (frame.y ?? 0) + padding + (contentH - childH) / 2;
       else if (align === "end") c.y = (frame.y ?? 0) + padding + contentH - childH;
@@ -58,7 +94,6 @@ export function computeLayout(frame: FrameElement): void {
       offset += childW + effectiveGap;
     } else {
       c.y = (frame.y ?? 0) + offset;
-      const align = layout.align_items ?? "start";
       if (align === "start") c.x = (frame.x ?? 0) + padding;
       else if (align === "center") c.x = (frame.x ?? 0) + padding + (contentW - childW) / 2;
       else if (align === "end") c.x = (frame.x ?? 0) + padding + contentW - childW;

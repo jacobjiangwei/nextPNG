@@ -91,6 +91,7 @@ export type EditorAction =
   | { type: "ADD_ELEMENT"; layerIndex: number; element: NpngElement }
   | { type: "DUPLICATE_SELECTION"; offset?: number }
   | { type: "DELETE_ELEMENT"; address: ElementAddress }
+  | { type: "TOGGLE_ELEMENT_VISIBILITY"; address: ElementAddress }
   | { type: "TOGGLE_ELEMENT_LOCK"; address: ElementAddress }
   | { type: "SET_DRAG"; dragState: DragState | null }
   | { type: "SET_DRAW"; drawState: DrawState | null }
@@ -168,7 +169,7 @@ function applyElementProps(element: NpngElement, props: Record<string, unknown>)
 function isEditableAddress(doc: NpngDocument, address: ElementAddress): boolean {
   const layer = doc.layers?.[address.layerIndex];
   const element = layer?.elements?.[address.elementIndex];
-  return !!layer && layer.visible !== false && !layer.locked && !!element && !element.locked;
+  return !!layer && layer.visible !== false && !layer.locked && !!element && element.visible !== false && !element.locked;
 }
 
 function isEditableLayer(layer: NonNullable<NpngDocument["layers"]>[number]): boolean {
@@ -216,6 +217,67 @@ function getInsertionLayerIndex(doc: NpngDocument, preferredIndex: number): numb
 
 function canSafelyUngroup(element: NpngElement): element is GroupElement {
   return element.type === "group" && !element.locked && !element.transform && (element.opacity === undefined || element.opacity === 1);
+}
+
+function getChildElements(element: NpngElement): NpngElement[] {
+  if (element.type === "group") return element.elements ?? [];
+  if (element.type === "frame") return element.children ?? [];
+  return [];
+}
+
+function collectElementIds(element: NpngElement, ids: Set<string>): void {
+  if (element.id) ids.add(element.id);
+  for (const child of getChildElements(element)) collectElementIds(child, ids);
+}
+
+function isElementLike(value: unknown): value is NpngElement {
+  return !!value && typeof value === "object" && typeof (value as { type?: unknown }).type === "string";
+}
+
+function collectDocumentElementIds(doc: NpngDocument): Set<string> {
+  const ids = new Set<string>();
+  for (const layer of doc.layers ?? []) {
+    for (const element of layer.elements ?? []) collectElementIds(element, ids);
+  }
+  for (const component of doc.components ?? []) {
+    collectElementIds(component.master, ids);
+  }
+  for (const def of doc.defs ?? []) {
+    if (isElementLike(def)) collectElementIds(def, ids);
+    const maybeChildren = (def as { elements?: unknown }).elements;
+    if (Array.isArray(maybeChildren)) {
+      for (const child of maybeChildren) {
+        if (isElementLike(child)) collectElementIds(child, ids);
+      }
+    }
+  }
+  return ids;
+}
+
+function toElementIdPrefix(type: string): string {
+  const prefix = type.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+  return prefix || "element";
+}
+
+function createUniqueElementId(type: string, existingIds: Set<string>): string {
+  const prefix = toElementIdPrefix(type);
+  let index = existingIds.size + 1;
+  let id = `${prefix}-${index}`;
+  while (existingIds.has(id)) {
+    index += 1;
+    id = `${prefix}-${index}`;
+  }
+  existingIds.add(id);
+  return id;
+}
+
+function ensureElementIdentity(doc: NpngDocument, element: NpngElement, forceNew = false, existingIds = collectDocumentElementIds(doc)): void {
+  if (forceNew || !element.id || existingIds.has(element.id)) {
+    element.id = createUniqueElementId(element.type, existingIds);
+  } else {
+    existingIds.add(element.id);
+  }
+  for (const child of getChildElements(element)) ensureElementIdentity(doc, child, forceNew, existingIds);
 }
 
 function applyElementUpdates(state: EditorState, updates: ElementUpdate[]): EditorState {
@@ -430,7 +492,9 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         newElements.splice(address.elementIndex, 1);
       }
       const insertIndex = Math.min(...sorted.map((address) => address.elementIndex));
-      newElements.splice(insertIndex, 0, { type: "group", name: "Group", elements: groupedElements });
+      const group: NpngElement = { type: "group", name: "Group", elements: groupedElements };
+      ensureElementIdentity(newDoc, group);
+      newElements.splice(insertIndex, 0, group);
       newDoc.layers![layerIndex].elements = newElements;
       const newYaml = docToYaml(newDoc);
       return {
@@ -498,7 +562,9 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         : getInsertionLayerIndex(newDoc, action.layerIndex);
       if (li < 0) return state;
       const targetElements = newDoc.layers![li].elements ?? [];
-      targetElements.push(action.element);
+      const element = structuredClone(action.element);
+      ensureElementIdentity(newDoc, element);
+      targetElements.push(element);
       newDoc.layers![li].elements = targetElements;
       const newYaml = docToYaml(newDoc);
       const newAddr: ElementAddress = { layerIndex: li, elementIndex: targetElements.length - 1 };
@@ -519,6 +585,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         if (!elements || !original || !isEditableAddress(doc, address)) continue;
 
         const duplicate = structuredClone(original);
+        ensureElementIdentity(newDoc, duplicate, true);
         applyElementProps(duplicate, applyMove(duplicate, offset, offset, getOrigProps(duplicate)));
         elements.push(duplicate);
         newSelection.push({ layerIndex: address.layerIndex, elementIndex: elements.length - 1 });
@@ -538,6 +605,22 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       newDoc.layers![layerIndex].elements!.splice(elementIndex, 1);
       const newYaml = docToYaml(newDoc);
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [], ...pushHistory(state, newYaml) };
+    }
+
+    case "TOGGLE_ELEMENT_VISIBILITY": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers) return state;
+      const layer = doc.layers[action.address.layerIndex];
+      const element = layer?.elements?.[action.address.elementIndex];
+      if (!layer || layer.locked || !element || element.locked) return state;
+      const newDoc = structuredClone(doc);
+      const nextElement = newDoc.layers![action.address.layerIndex].elements![action.address.elementIndex];
+      nextElement.visible = nextElement.visible === false ? true : false;
+      const newYaml = docToYaml(newDoc);
+      const selection = nextElement.visible === false
+        ? state.selection.filter((selected) => !sameAddress(selected, action.address))
+        : state.selection;
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection, ...pushHistory(state, newYaml) };
     }
 
     case "TOGGLE_ELEMENT_LOCK": {
@@ -711,6 +794,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const targetElements = newDoc.layers![li].elements ?? [];
       const element: NpngElement = { type: "path", name: closed ? "Closed Path" : "Pen Path", d, fill: closed ? "#3498DB" : "none" };
       if (!closed) element.stroke = { color: "#333333", width: 2 };
+      ensureElementIdentity(newDoc, element);
       targetElements.push(element);
       newDoc.layers![li].elements = targetElements;
       const newYaml = docToYaml(newDoc);
@@ -751,6 +835,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         element.fill = "none";
         element.stroke = { color: "#333333", width: 2 };
       }
+      ensureElementIdentity(newDoc, element);
       targetElements.push(element);
       newDoc.layers![li].elements = targetElements;
       const newYaml = docToYaml(newDoc);

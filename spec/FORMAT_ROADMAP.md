@@ -25,6 +25,11 @@ npng 格式的终极目标：**覆盖 Figma 和 Photoshop 能做的所有视觉�
 | Clipping paths | ✅ |
 | Masks (alpha channel) | ✅ |
 | Defs / Use (reusable components) | ✅ |
+| Stable element IDs / names / visibility / locks | ✅ |
+| Groups (nested object trees) | ✅ |
+| Text boxes with wrapping | ✅ |
+| Raster image elements | ✅ |
+| Frame / basic auto-layout foundation | ✅ |
 | Boolean operations (union, subtract, intersect, exclude) | ✅ |
 | Fill rule (evenodd, nonzero) | ✅ |
 | SVG path commands (M, L, H, V, C, S, Q, T, A, Z) | ✅ |
@@ -37,15 +42,15 @@ npng 格式的终极目标：**覆盖 Figma 和 Photoshop 能做的所有视觉�
 
 | # | 能力 | Figma | Photoshop | npng | 优先级 |
 |---|------|-------|-----------|------|--------|
-| 1 | **Multiple fills per element** | ✅ | ✅ | ❌ | P0 |
-| 2 | **Multiple strokes per element** | ✅ | ✅ | ❌ | P0 |
+| 1 | **Multiple fills per element** | ✅ | ✅ | ✅ | P0 |
+| 2 | **Multiple strokes per element** | ✅ | ✅ | ✅ | P0 |
 | 3 | **Stroke alignment** (inside / outside / center) | ✅ | ✅ | ❌ | P0 |
 | 4 | **Inner shadow** | ✅ | ✅ | ❌ | P0 |
 | 5 | **Background blur** (frosted glass) | ✅ | ✅ (lens blur) | ❌ | P0 |
 | 6 | **Image / pattern fill** | ✅ | ✅ | ❌ | P0 |
-| 7 | **Per-element blend mode** | ✅ | ✅ | ❌ (仅 layer) | P0 |
+| 7 | **Per-element blend mode** | ✅ | ✅ | ❌ (仅 layer / fill layer) | P0 |
 | 8 | **Element-level clip / mask** | ✅ | ✅ | ❌ (仅 layer) | P0 |
-| 9 | **Groups** (嵌套分组) | ✅ | ✅ | ❌ | P0 |
+| 9 | **Groups** (嵌套分组) | ✅ | ✅ | ✅ | P0 |
 | 10 | **Angular / conic gradient** | ✅ | ✅ | ❌ | P1 |
 | 11 | **Diamond gradient** | ❌ | ✅ | ❌ | P2 |
 
@@ -116,17 +121,12 @@ npng 格式的终极目标：**覆盖 Figma 和 Photoshop 能做的所有视觉�
 - type: group
   name: "button"
   opacity: 0.9
-  blend_mode: multiply
   clip: true           # clip children to group bounds
   elements:
     - type: rect
       ...
     - type: text
       ...
-
-# Per-element blend mode
-- type: rect
-  blend_mode: screen
 
 # Per-element clip / mask
 - type: rect

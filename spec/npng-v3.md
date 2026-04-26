@@ -45,11 +45,21 @@ layers:               # ordered list of layers (required)
 
 All elements share these common fields:
 
-| Field   | Type   | Default       | Description          |
-|---------|--------|---------------|----------------------|
-| type    | string | required      | Element type         |
-| fill    | string/object | none  | Fill color or spec   |
-| stroke  | object | none          | Stroke specification |
+| Field       | Type          | Default  | Description |
+|-------------|---------------|----------|-------------|
+| type        | string        | required | Element type |
+| id          | string        | none     | Stable machine-readable object ID for AI edits, overrides, and references |
+| name        | string        | ""       | Human-readable object name shown in layer panels |
+| visible     | bool          | true     | Whether this object is rendered and hit-tested |
+| locked      | bool          | false    | Whether this object can be selected or edited |
+| opacity     | float         | 1.0      | Per-object opacity |
+| transform   | object        | none     | Translate/rotate/scale/origin transform |
+| fill        | string/object | none     | Fill color or spec |
+| fills       | list          | none     | Multiple fill layers, bottom to top |
+| stroke      | object        | none     | Stroke specification |
+| strokes     | list          | none     | Multiple stroke layers |
+| constraints | object        | none     | Figma-like resize constraints |
+| layout_item | object        | none     | Auto-layout child behavior |
 
 ### Rect
 

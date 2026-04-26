@@ -54,9 +54,17 @@ export interface Constraints {
   vertical?: "top" | "bottom" | "center" | "top-bottom" | "scale";
 }
 
+export interface LayoutItemSpec {
+  grow?: number;
+  shrink?: number;
+  align_self?: "auto" | "start" | "center" | "end" | "stretch";
+}
+
 export interface BaseElement {
   type: string;
+  id?: string;
   name?: string;
+  visible?: boolean;
   locked?: boolean;
   fill?: FillSpec;
   stroke?: StrokeSpec;
@@ -65,6 +73,7 @@ export interface BaseElement {
   fills?: FillLayer[];
   strokes?: StrokeLayer[];
   constraints?: Constraints;
+  layout_item?: LayoutItemSpec;
 }
 
 export interface RectElement extends BaseElement {

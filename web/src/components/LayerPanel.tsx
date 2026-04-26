@@ -121,13 +121,21 @@ export default function LayerPanel({ doc, selection, dispatch }: LayerPanelProps
                       address: { layerIndex: li, elementIndex: ei },
                       append: e.shiftKey || e.metaKey || e.ctrlKey,
                     })}
-                    disabled={layer.locked || elem.locked}
+                    disabled={layer.locked || elem.locked || elem.visible === false}
                     className={`flex-1 text-left px-5 py-1 text-xs truncate disabled:cursor-not-allowed ${
-                      isSelected ? "text-blue-200 font-medium" : layer.locked || elem.locked ? "text-zinc-600" : "text-zinc-400"
+                      isSelected ? "text-blue-200 font-medium" : layer.locked || elem.locked || elem.visible === false ? "text-zinc-600" : "text-zinc-400"
                     }`}
-                    title={layer.locked || elem.locked ? "Unlock before selecting" : "Click to select, Shift/Cmd/Ctrl-click to add or remove"}
+                    title={layer.locked || elem.locked ? "Unlock before selecting" : elem.visible === false ? "Show before selecting" : "Click to select, Shift/Cmd/Ctrl-click to add or remove"}
                   >
                     {label}
+                  </button>
+                  <button
+                    onClick={() => dispatch({ type: "TOGGLE_ELEMENT_VISIBILITY", address: { layerIndex: li, elementIndex: ei } })}
+                    disabled={layer.locked || elem.locked}
+                    className={`text-[10px] px-0.5 disabled:text-zinc-700 ${elem.visible === false ? "text-zinc-600" : "text-zinc-400 hover:text-zinc-200"}`}
+                    title={elem.visible === false ? "Show object" : "Hide object"}
+                  >
+                    {elem.visible === false ? "○" : "●"}
                   </button>
                   <button
                     onClick={() => dispatch({ type: "TOGGLE_ELEMENT_LOCK", address: { layerIndex: li, elementIndex: ei } })}

@@ -310,7 +310,9 @@ function getRawBoundingBox(element: NpngElement): BoundingBox {
       };
     }
     case "group": {
-      const boxes = (element.elements ?? []).map(getBoundingBox);
+      const boxes = (element.elements ?? [])
+        .filter((child) => child.visible !== false)
+        .map(getBoundingBox);
       return mergeBoundingBoxes(boxes) ?? { x: 0, y: 0, width: 0, height: 0 };
     }
     case "image":
@@ -370,7 +372,7 @@ export function hitTestAll(doc: NpngDocument, px: number, py: number): ElementAd
     if (layer.visible === false || layer.locked) continue;
     const elements = layer.elements ?? [];
     for (let ei = elements.length - 1; ei >= 0; ei--) {
-      if (elements[ei].locked) continue;
+      if (elements[ei].visible === false || elements[ei].locked) continue;
       const box = getBoundingBox(elements[ei]);
       if (pointInBox(px, py, box)) {
         results.push({ layerIndex: li, elementIndex: ei });
@@ -388,7 +390,7 @@ export function hitTestBox(doc: NpngDocument, box: BoundingBox): ElementAddress[
     if (layer.visible === false || layer.locked) continue;
     const elements = layer.elements ?? [];
     for (let ei = 0; ei < elements.length; ei++) {
-      if (elements[ei].locked) continue;
+      if (elements[ei].visible === false || elements[ei].locked) continue;
       if (boxesIntersect(getBoundingBox(elements[ei]), box)) {
         results.push({ layerIndex: li, elementIndex: ei });
       }

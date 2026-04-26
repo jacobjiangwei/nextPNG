@@ -27,6 +27,24 @@ function isNpngElement(value: unknown): value is NpngElement {
   return typeof maybeElement.type === "string";
 }
 
+function toCompositeOperation(mode?: string): GlobalCompositeOperation {
+  const blendMap: Record<string, GlobalCompositeOperation> = {
+    normal: "source-over",
+    multiply: "multiply",
+    screen: "screen",
+    overlay: "overlay",
+    darken: "darken",
+    lighten: "lighten",
+    "color-dodge": "color-dodge",
+    "color-burn": "color-burn",
+    "hard-light": "hard-light",
+    "soft-light": "soft-light",
+    difference: "difference",
+    exclusion: "exclusion",
+  };
+  return blendMap[mode ?? "normal"] ?? "source-over";
+}
+
 function loadImage(href: string, onLoad?: () => void): HTMLImageElement | null {
   if (imageCache.has(href)) {
     const img = imageCache.get(href)!;
@@ -79,6 +97,7 @@ function collectElementImageHrefs(
   defs: Map<string, DefItem>,
   resolvingComponentIds = new Set<string>()
 ): void {
+  if (element.visible === false) return;
   if (element.type === "image" && element.href) hrefs.add(element.href);
   if (element.type === "group") {
     for (const child of element.elements ?? []) collectElementImageHrefs(child, hrefs, components, defs, resolvingComponentIds);
@@ -347,6 +366,7 @@ function renderElement(
   components?: ComponentDef[],
   onAsyncResourceLoaded?: () => void
 ): void {
+  if (elem.visible === false) return;
   const transform = elem.transform as TransformSpec | undefined;
   const elemOpacity = elem.opacity ?? 1.0;
 
@@ -699,21 +719,7 @@ export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement, option
     // Composite onto main canvas
     ctx.save();
     ctx.globalAlpha = opacity;
-    const blendMap: Record<string, GlobalCompositeOperation> = {
-      normal: "source-over",
-      multiply: "multiply",
-      screen: "screen",
-      overlay: "overlay",
-      darken: "darken",
-      lighten: "lighten",
-      "color-dodge": "color-dodge",
-      "color-burn": "color-burn",
-      "hard-light": "hard-light",
-      "soft-light": "soft-light",
-      difference: "difference",
-      exclusion: "exclusion",
-    };
-    ctx.globalCompositeOperation = blendMap[blendMode] ?? "source-over";
+    ctx.globalCompositeOperation = toCompositeOperation(blendMode);
     ctx.drawImage(offscreen, 0, 0, width, height);
     ctx.restore();
   }
