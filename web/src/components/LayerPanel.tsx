@@ -108,10 +108,15 @@ export default function LayerPanel({ doc, selection, dispatch }: LayerPanelProps
                   isSelected ? "bg-blue-600/50 border-l-2 border-blue-400" : "hover:bg-zinc-700/50 border-l-2 border-transparent"
                 }`}>
                   <button
-                    onClick={() => dispatch({ type: "SELECT", address: { layerIndex: li, elementIndex: ei } })}
+                    onClick={(e) => dispatch({
+                      type: "SELECT",
+                      address: { layerIndex: li, elementIndex: ei },
+                      append: e.shiftKey || e.metaKey || e.ctrlKey,
+                    })}
                     className={`flex-1 text-left px-5 py-1 text-xs truncate ${
                       isSelected ? "text-blue-200 font-medium" : "text-zinc-400"
                     }`}
+                    title="Click to select, Shift/Cmd/Ctrl-click to add or remove"
                   >
                     {label}
                   </button>

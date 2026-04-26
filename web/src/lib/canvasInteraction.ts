@@ -1,5 +1,5 @@
 import type { BoundingBox } from "./hitTest";
-import type { NpngElement } from "./types";
+import type { NpngElement, TransformSpec } from "./types";
 import { parsePath } from "./pathParser";
 
 type InteractiveElement = NpngElement & {
@@ -70,6 +70,16 @@ const roundCoord = (value: number): number => {
 
 const formatCoord = (value: number): string => String(roundCoord(value));
 
+function moveTransformOrigin(element: NpngElement, dx: number, dy: number): { transform?: TransformSpec } {
+  if (!element.transform?.origin) return {};
+  return {
+    transform: {
+      ...element.transform,
+      origin: [element.transform.origin[0] + dx, element.transform.origin[1] + dy],
+    },
+  };
+}
+
 function translateAbsolutePairs(args: number[], dx: number, dy: number, start = 0): number[] {
   const next = [...args];
   for (let i = start; i + 1 < next.length; i += 2) {
@@ -112,16 +122,17 @@ export function applyMove(element: NpngElement, dx: number, dy: number, origProp
     case "image":
     case "frame":
     case "component-instance":
-      return { x: (origProps.x ?? e.x ?? 0) + dx, y: (origProps.y ?? e.y ?? 0) + dy };
+      return { x: (origProps.x ?? e.x ?? 0) + dx, y: (origProps.y ?? e.y ?? 0) + dy, ...moveTransformOrigin(element, dx, dy) };
     case "ellipse":
-      return { cx: (origProps.cx ?? e.cx ?? 0) + dx, cy: (origProps.cy ?? e.cy ?? 0) + dy };
+      return { cx: (origProps.cx ?? e.cx ?? 0) + dx, cy: (origProps.cy ?? e.cy ?? 0) + dy, ...moveTransformOrigin(element, dx, dy) };
     case "line":
       return {
         x1: (origProps.x1 ?? e.x1 ?? 0) + dx, y1: (origProps.y1 ?? e.y1 ?? 0) + dy,
         x2: (origProps.x2 ?? e.x2 ?? 0) + dx, y2: (origProps.y2 ?? e.y2 ?? 0) + dy,
+        ...moveTransformOrigin(element, dx, dy),
       };
     case "path":
-      return e.d ? { d: translatePathData(e.d, dx, dy) } : {};
+      return e.d ? { d: translatePathData(e.d, dx, dy), ...moveTransformOrigin(element, dx, dy) } : moveTransformOrigin(element, dx, dy);
     default:
       return {};
   }

@@ -17,7 +17,7 @@ import type {
 } from "../lib/types";
 import { getBoundingBox } from "../lib/hitTest";
 import { isEditablePathData } from "../lib/pathEditing";
-import type { ElementAddress, EditorAction } from "../lib/editorState";
+import type { AlignmentCommand, DistributionCommand, ElementAddress, EditorAction } from "../lib/editorState";
 
 interface PropertyPanelProps {
   element: NpngElement | null;
@@ -28,6 +28,18 @@ interface PropertyPanelProps {
 }
 
 const ARROW_TYPES: ArrowEndType[] = ["none", "arrow", "circle", "diamond"];
+const ALIGN_BUTTONS: { label: string; alignment: AlignmentCommand; title: string }[] = [
+  { label: "Left", alignment: "left", title: "Align left" },
+  { label: "H Center", alignment: "center", title: "Align horizontal centers" },
+  { label: "Right", alignment: "right", title: "Align right" },
+  { label: "Top", alignment: "top", title: "Align top" },
+  { label: "V Center", alignment: "middle", title: "Align vertical centers" },
+  { label: "Bottom", alignment: "bottom", title: "Align bottom" },
+];
+const DISTRIBUTE_BUTTONS: { label: string; direction: DistributionCommand; title: string }[] = [
+  { label: "Distribute H", direction: "horizontal", title: "Distribute horizontal spacing" },
+  { label: "Distribute V", direction: "vertical", title: "Distribute vertical spacing" },
+];
 
 type EditableElement = NpngElement & {
   x?: number;
@@ -119,6 +131,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function InspectorButton({ children, onClick, disabled, title }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; title?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="px-2 py-1 text-[11px] bg-zinc-800 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 disabled:text-zinc-600 disabled:hover:bg-zinc-800 disabled:cursor-not-allowed"
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function PropertyPanel({ element, address, selectionCount = 0, doc, dispatch }: PropertyPanelProps) {
   const [editingSpans, setEditingSpans] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,7 +153,36 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
       return (
         <div className="p-3 text-xs text-zinc-400 leading-relaxed">
           <div className="font-medium text-zinc-300 mb-1">{selectionCount} elements selected</div>
-          Drag on canvas to move them together. Cmd/Ctrl+D duplicates, arrow keys nudge, Cmd/Ctrl+A selects all.
+          <Section title="Align">
+            <div className="grid grid-cols-3 gap-1">
+              {ALIGN_BUTTONS.map((button) => (
+                <InspectorButton
+                  key={button.alignment}
+                  title={button.title}
+                  onClick={() => dispatch({ type: "ALIGN_SELECTION", alignment: button.alignment })}
+                >
+                  {button.label}
+                </InspectorButton>
+              ))}
+            </div>
+          </Section>
+          <Section title="Distribute">
+            <div className="grid grid-cols-2 gap-1">
+              {DISTRIBUTE_BUTTONS.map((button) => (
+                <InspectorButton
+                  key={button.direction}
+                  title={selectionCount >= 3 ? button.title : "Select at least 3 elements"}
+                  disabled={selectionCount < 3}
+                  onClick={() => dispatch({ type: "DISTRIBUTE_SELECTION", direction: button.direction })}
+                >
+                  {button.label}
+                </InspectorButton>
+              ))}
+            </div>
+          </Section>
+          <div className="text-zinc-500">
+            Drag on canvas to move together. Cmd/Ctrl+D duplicates, arrow keys nudge, Cmd/Ctrl+A selects all.
+          </div>
         </div>
       );
     }

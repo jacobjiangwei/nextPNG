@@ -1,5 +1,6 @@
 import yaml from "js-yaml";
 import { applyMove, getOrigProps } from "./canvasInteraction";
+import { getBoundingBox, mergeBoundingBoxes } from "./hitTest";
 import type { NpngDocument, NpngElement } from "./types";
 
 export type Tool = "select" | "rect" | "ellipse" | "line" | "text"
@@ -24,6 +25,9 @@ export interface ElementUpdate {
   address: ElementAddress;
   props: Record<string, unknown>;
 }
+
+export type AlignmentCommand = "left" | "center" | "right" | "top" | "middle" | "bottom";
+export type DistributionCommand = "horizontal" | "vertical";
 
 export interface DrawState {
   tool: Tool;
@@ -79,6 +83,8 @@ export type EditorAction =
   | { type: "SET_TOOL"; tool: Tool }
   | { type: "UPDATE_ELEMENT"; address: ElementAddress; props: Record<string, unknown> }
   | { type: "UPDATE_ELEMENTS"; updates: ElementUpdate[] }
+  | { type: "ALIGN_SELECTION"; alignment: AlignmentCommand }
+  | { type: "DISTRIBUTE_SELECTION"; direction: DistributionCommand }
   | { type: "ADD_ELEMENT"; layerIndex: number; element: NpngElement }
   | { type: "DUPLICATE_SELECTION"; offset?: number }
   | { type: "DELETE_ELEMENT"; address: ElementAddress }
@@ -152,6 +158,28 @@ function applyElementProps(element: NpngElement, props: Record<string, unknown>)
     if (v === undefined || v === null) delete editable[k];
     else editable[k] = v;
   }
+}
+
+function applyElementUpdates(state: EditorState, updates: ElementUpdate[]): EditorState {
+  const doc = state.parsedDoc;
+  if (!doc?.layers || updates.length === 0) return state;
+  const newDoc = structuredClone(doc);
+  let changed = false;
+  for (const update of updates) {
+    const element = newDoc.layers?.[update.address.layerIndex]?.elements?.[update.address.elementIndex];
+    if (!element) continue;
+    applyElementProps(element, update.props);
+    changed = true;
+  }
+  if (!changed) return state;
+  const newYaml = docToYaml(newDoc);
+  return { ...state, yamlText: newYaml, parsedDoc: newDoc, ...pushHistory(state, newYaml) };
+}
+
+function buildMoveUpdate(address: ElementAddress, element: NpngElement, dx: number, dy: number): ElementUpdate | null {
+  if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return null;
+  const props = applyMove(element, dx, dy, getOrigProps(element));
+  return Object.keys(props).length > 0 ? { address, props } : null;
 }
 
 function penPointsToPathD(points: PenPoint[], closed: boolean): string {
@@ -260,19 +288,62 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     }
 
     case "UPDATE_ELEMENTS": {
+      return applyElementUpdates(state, action.updates);
+    }
+
+    case "ALIGN_SELECTION": {
       const doc = state.parsedDoc;
-      if (!doc?.layers || action.updates.length === 0) return state;
-      const newDoc = structuredClone(doc);
-      let changed = false;
-      for (const update of action.updates) {
-        const element = newDoc.layers?.[update.address.layerIndex]?.elements?.[update.address.elementIndex];
-        if (!element) continue;
-        applyElementProps(element, update.props);
-        changed = true;
-      }
-      if (!changed) return state;
-      const newYaml = docToYaml(newDoc);
-      return { ...state, yamlText: newYaml, parsedDoc: newDoc, ...pushHistory(state, newYaml) };
+      if (!doc?.layers || state.selection.length < 2) return state;
+      const items = state.selection.flatMap((address) => {
+        const element = doc.layers?.[address.layerIndex]?.elements?.[address.elementIndex];
+        return element ? [{ address, element, box: getBoundingBox(element) }] : [];
+      });
+      const selectionBox = mergeBoundingBoxes(items.map((item) => item.box));
+      if (!selectionBox) return state;
+
+      const updates = items.flatMap((item) => {
+        let dx = 0;
+        let dy = 0;
+        if (action.alignment === "left") dx = selectionBox.x - item.box.x;
+        else if (action.alignment === "center") dx = selectionBox.x + selectionBox.width / 2 - (item.box.x + item.box.width / 2);
+        else if (action.alignment === "right") dx = selectionBox.x + selectionBox.width - (item.box.x + item.box.width);
+        else if (action.alignment === "top") dy = selectionBox.y - item.box.y;
+        else if (action.alignment === "middle") dy = selectionBox.y + selectionBox.height / 2 - (item.box.y + item.box.height / 2);
+        else if (action.alignment === "bottom") dy = selectionBox.y + selectionBox.height - (item.box.y + item.box.height);
+        const update = buildMoveUpdate(item.address, item.element, dx, dy);
+        return update ? [update] : [];
+      });
+      return applyElementUpdates(state, updates);
+    }
+
+    case "DISTRIBUTE_SELECTION": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers || state.selection.length < 3) return state;
+      const items = state.selection.flatMap((address) => {
+        const element = doc.layers?.[address.layerIndex]?.elements?.[address.elementIndex];
+        return element ? [{ address, element, box: getBoundingBox(element) }] : [];
+      });
+      if (items.length < 3) return state;
+
+      const sorted = [...items].sort((a, b) => action.direction === "horizontal"
+        ? a.box.x - b.box.x
+        : a.box.y - b.box.y);
+      const selectionBox = mergeBoundingBoxes(sorted.map((item) => item.box));
+      if (!selectionBox) return state;
+
+      const totalSize = sorted.reduce((sum, item) => sum + (action.direction === "horizontal" ? item.box.width : item.box.height), 0);
+      const available = action.direction === "horizontal" ? selectionBox.width : selectionBox.height;
+      const gap = (available - totalSize) / (sorted.length - 1);
+      let cursor = action.direction === "horizontal" ? selectionBox.x : selectionBox.y;
+
+      const updates = sorted.flatMap((item) => {
+        const dx = action.direction === "horizontal" ? cursor - item.box.x : 0;
+        const dy = action.direction === "vertical" ? cursor - item.box.y : 0;
+        cursor += (action.direction === "horizontal" ? item.box.width : item.box.height) + gap;
+        const update = buildMoveUpdate(item.address, item.element, dx, dy);
+        return update ? [update] : [];
+      });
+      return applyElementUpdates(state, updates);
     }
 
     case "ADD_ELEMENT": {
