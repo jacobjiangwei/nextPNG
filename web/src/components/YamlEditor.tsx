@@ -16,11 +16,12 @@ export default function YamlEditor({ value, onChange }: YamlEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
-  const valueRef = useRef(value);
+  const initialValueRef = useRef(value);
   const suppressUpdate = useRef(false);
 
-  onChangeRef.current = onChange;
-  valueRef.current = value;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -33,7 +34,7 @@ export default function YamlEditor({ value, onChange }: YamlEditorProps) {
     });
 
     const state = EditorState.create({
-      doc: valueRef.current,
+      doc: initialValueRef.current,
       extensions: [basicSetup, yamlLang(), oneDark, updateListener],
     });
 

@@ -37,12 +37,32 @@ export interface TransformSpec {
   origin?: [number, number];
 }
 
+// Step 7: Multiple fills & strokes
+export interface FillLayer {
+  fill: FillSpec;
+  opacity?: number;
+  blend_mode?: string;
+}
+
+export interface StrokeLayer extends StrokeSpec {
+  opacity?: number;
+}
+
+// Step 9: Constraints
+export interface Constraints {
+  horizontal?: "left" | "right" | "center" | "left-right" | "scale";
+  vertical?: "top" | "bottom" | "center" | "top-bottom" | "scale";
+}
+
 export interface BaseElement {
   type: string;
   fill?: FillSpec;
   stroke?: StrokeSpec;
   transform?: TransformSpec;
   opacity?: number;
+  fills?: FillLayer[];
+  strokes?: StrokeLayer[];
+  constraints?: Constraints;
 }
 
 export interface RectElement extends BaseElement {
@@ -63,12 +83,25 @@ export interface EllipseElement extends BaseElement {
   ry?: number;
 }
 
+export type ArrowEndType = "none" | "arrow" | "circle" | "diamond";
+
 export interface LineElement extends BaseElement {
   type: "line";
   x1?: number;
   y1?: number;
   x2?: number;
   y2?: number;
+  arrow_start?: ArrowEndType;
+  arrow_end?: ArrowEndType;
+}
+
+export interface TextSpan {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  font_size?: number;
+  fill?: string;
 }
 
 export interface TextElement extends BaseElement {
@@ -80,6 +113,7 @@ export interface TextElement extends BaseElement {
   font_family?: string;
   font_weight?: string;
   align?: "left" | "center" | "right";
+  spans?: TextSpan[];
 }
 
 export interface PathElement extends BaseElement {
@@ -110,6 +144,52 @@ export interface UseElement extends BaseElement {
   cy?: number;
 }
 
+export interface ImageElement extends BaseElement {
+  type: "image";
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  href?: string;
+}
+
+// Step 10: Frame / Auto Layout
+export interface AutoLayoutSpec {
+  mode: "horizontal" | "vertical";
+  gap?: number;
+  padding?: number;
+  align_items?: "start" | "center" | "end" | "stretch";
+  justify_content?: "start" | "center" | "end" | "space-between";
+}
+
+export interface FrameElement extends BaseElement {
+  type: "frame";
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  auto_layout?: AutoLayoutSpec;
+  children?: NpngElement[];
+}
+
+// Step 11: Components
+export interface ComponentDef {
+  id: string;
+  name: string;
+  master: NpngElement;
+  properties?: Record<string, unknown>;
+}
+
+export interface ComponentInstanceElement extends BaseElement {
+  type: "component-instance";
+  component_id?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  overrides?: Record<string, unknown>;
+}
+
 export type NpngElement =
   | RectElement
   | EllipseElement
@@ -118,7 +198,10 @@ export type NpngElement =
   | PathElement
   | GroupElement
   | BooleanElement
-  | UseElement;
+  | UseElement
+  | ImageElement
+  | FrameElement
+  | ComponentInstanceElement;
 
 export interface FilterSpec {
   type: "blur" | "drop-shadow";
@@ -155,4 +238,5 @@ export interface NpngDocument {
   canvas?: NpngCanvas;
   defs?: DefItem[];
   layers?: Layer[];
+  components?: ComponentDef[];
 }

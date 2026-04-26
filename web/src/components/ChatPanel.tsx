@@ -72,10 +72,11 @@ export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
         if (yamlMatch) {
           onYamlGenerated(yamlMatch[1]);
         }
-      } catch (err: any) {
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `Error: ${err.message}` },
+          { role: "assistant", content: `Error: ${message}` },
         ]);
       } finally {
         setLoading(false);
