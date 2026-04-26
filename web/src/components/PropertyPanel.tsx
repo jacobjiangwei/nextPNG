@@ -12,8 +12,10 @@ import type {
   StrokeSpec,
   Constraints,
   AutoLayoutSpec,
+  TransformSpec,
   Layer,
 } from "../lib/types";
+import { getBoundingBox } from "../lib/hitTest";
 import type { ElementAddress, EditorAction } from "../lib/editorState";
 
 interface PropertyPanelProps {
@@ -54,6 +56,7 @@ type EditableElement = NpngElement & {
   constraints?: Constraints;
   auto_layout?: AutoLayoutSpec;
   component_id?: string;
+  transform?: TransformSpec;
 };
 
 function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
@@ -283,6 +286,11 @@ export default function PropertyPanel({ element, address, doc, dispatch }: Prope
         <NumberInput label="Opacity" value={e.opacity ?? 1} onChange={v => update({ opacity: Math.max(0, Math.min(1, v)) })} />
       </Section>
 
+      <TransformEditor
+        element={e}
+        onChange={(transform) => update({ transform })}
+      />
+
       {/* Constraints */}
       <ConstraintsEditor
         constraints={e.constraints}
@@ -328,6 +336,42 @@ export default function PropertyPanel({ element, address, doc, dispatch }: Prope
         />
       )}
     </div>
+  );
+}
+
+function TransformEditor({ element, onChange }: { element: EditableElement; onChange: (transform: TransformSpec) => void }) {
+  const transform = element.transform ?? {};
+  const box = getBoundingBox({ ...element, transform: undefined } as NpngElement);
+  const defaultOrigin: [number, number] = [
+    Math.round(box.x + box.width / 2),
+    Math.round(box.y + box.height / 2),
+  ];
+  const origin = transform.origin ?? defaultOrigin;
+
+  const updateTransform = (patch: Partial<TransformSpec>) => {
+    onChange({ ...transform, ...patch });
+  };
+
+  return (
+    <Section title="Transform">
+      <NumberInput
+        label="Rotate"
+        value={transform.rotate ?? 0}
+        onChange={(v) => updateTransform({ rotate: v, origin })}
+      />
+      <div className="grid grid-cols-2 gap-1">
+        <NumberInput
+          label="OX"
+          value={origin[0]}
+          onChange={(v) => updateTransform({ origin: [v, origin[1]] })}
+        />
+        <NumberInput
+          label="OY"
+          value={origin[1]}
+          onChange={(v) => updateTransform({ origin: [origin[0], v] })}
+        />
+      </div>
+    </Section>
   );
 }
 

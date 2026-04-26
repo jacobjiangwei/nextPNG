@@ -6,8 +6,10 @@ import { renderNpng } from "../lib/renderer";
 import { hitTestAll, getBoundingBox } from "../lib/hitTest";
 import { getHandles, getHandleAtPoint, cursorForHandle, applyMove, applyResize, getOrigProps } from "../lib/canvasInteraction";
 import { generateShapeForTool } from "../lib/presetShapes";
+import { getPathControlLines, getPathHandleAtPoint, getPathHandles, isEditablePathData, updatePathHandle } from "../lib/pathEditing";
 import type { NpngDocument, NpngElement } from "../lib/types";
 import type { ElementAddress, EditorAction, Tool, DragState, DrawState, PenState, PolyState } from "../lib/editorState";
+import type { PathHandleRef } from "../lib/pathEditing";
 
 interface CanvasPreviewProps {
   yamlText: string;
@@ -26,6 +28,15 @@ interface CanvasPreviewProps {
   dispatch: React.Dispatch<EditorAction>;
 }
 
+interface PathDragState {
+  address: ElementAddress;
+  handle: PathHandleRef;
+  startX: number;
+  startY: number;
+  origD: string;
+  currentD: string;
+}
+
 export default function CanvasPreview({
   yamlText, parsedDoc, selection, activeTool, dragState, drawState, penState, polyState,
   zoom, panX, panY, showGrid, gridSize, dispatch,
@@ -35,6 +46,7 @@ export default function CanvasPreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
+  const [pathDrag, setPathDrag] = useState<PathDragState | null>(null);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const clickCycleRef = useRef<{ x: number; y: number; index: number }>({ x: -1, y: -1, index: 0 });
 
@@ -208,9 +220,42 @@ export default function CanvasPreview({
           ctx.fillRect(h.x, h.y, h.size, h.size);
           ctx.strokeRect(h.x, h.y, h.size, h.size);
         }
+
+        if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
+          const editingD =
+            pathDrag &&
+            pathDrag.address.layerIndex === sel.layerIndex &&
+            pathDrag.address.elementIndex === sel.elementIndex
+              ? pathDrag.currentD
+              : elem.d;
+
+          ctx.save();
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = "#94A3B8";
+          ctx.lineWidth = 1;
+          for (const line of getPathControlLines(editingD)) {
+            ctx.beginPath();
+            ctx.moveTo(line.from.x, line.from.y);
+            ctx.lineTo(line.to.x, line.to.y);
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+
+          for (const handle of getPathHandles(editingD)) {
+            const isAnchor = handle.role === "anchor";
+            ctx.beginPath();
+            ctx.arc(handle.x, handle.y, isAnchor ? 4 : 3, 0, Math.PI * 2);
+            ctx.fillStyle = isAnchor ? "#FFFFFF" : "#3B82F6";
+            ctx.strokeStyle = isAnchor ? "#3B82F6" : "#BFDBFE";
+            ctx.lineWidth = 1.5;
+            ctx.fill();
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
       }
     }
-  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState]);
+  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState, pathDrag]);
 
   // Draw rubber-band preview for drawing tools
   useEffect(() => {
@@ -327,6 +372,21 @@ export default function CanvasPreview({
       const layer = parsedDoc.layers[sel.layerIndex];
       const elem = layer?.elements?.[sel.elementIndex];
       if (elem) {
+        if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
+          const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(4, 8 / zoom));
+          if (pathHandle) {
+            setPathDrag({
+              address: sel,
+              handle: pathHandle,
+              startX: pt.x,
+              startY: pt.y,
+              origD: elem.d,
+              currentD: elem.d,
+            });
+            return;
+          }
+        }
+
         const box = getBoundingBox(elem);
         const handle = getHandleAtPoint(box, pt.x, pt.y);
         if (handle) {
@@ -372,7 +432,7 @@ export default function CanvasPreview({
         });
       }
     }
-  }, [parsedDoc, selection, activeTool, penState, dispatch, getCanvasCoords, spaceHeld, panX, panY]);
+  }, [parsedDoc, selection, activeTool, penState, dispatch, getCanvasCoords, spaceHeld, panX, panY, zoom]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     const pt = getCanvasCoords(e);
@@ -400,6 +460,14 @@ export default function CanvasPreview({
 
     const pt = getCanvasCoords(e);
     if (!pt) return;
+
+    if (pathDrag) {
+      const dx = pt.x - pathDrag.startX;
+      const dy = pt.y - pathDrag.startY;
+      const currentD = updatePathHandle(pathDrag.origD, pathDrag.handle, dx, dy);
+      setPathDrag({ ...pathDrag, currentD });
+      return;
+    }
 
     // Pen drag (bezier handle)
     if (penState?.draggingHandle) {
@@ -481,6 +549,15 @@ export default function CanvasPreview({
       const layer = parsedDoc.layers[sel.layerIndex];
       const elem = layer?.elements?.[sel.elementIndex];
       if (elem) {
+        if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
+          const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(4, 8 / zoom));
+          if (pathHandle) {
+            const canvas = overlayRef.current ?? canvasRef.current;
+            if (canvas) canvas.style.cursor = "pointer";
+            return;
+          }
+        }
+
         const box = getBoundingBox(elem);
         const handle = getHandleAtPoint(box, pt.x, pt.y);
         const canvas = overlayRef.current ?? canvasRef.current;
@@ -490,7 +567,7 @@ export default function CanvasPreview({
       const canvas = overlayRef.current ?? canvasRef.current;
       if (canvas) canvas.style.cursor = "crosshair";
     }
-  }, [dragState, drawState, selection, parsedDoc, activeTool, penState, polyState, dispatch, getCanvasCoords, isPanning, spaceHeld]);
+  }, [dragState, drawState, selection, parsedDoc, activeTool, penState, polyState, dispatch, getCanvasCoords, isPanning, spaceHeld, pathDrag, zoom]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     if (isPanning) {
@@ -502,6 +579,14 @@ export default function CanvasPreview({
     // End pen drag
     if (penState?.draggingHandle) {
       dispatch({ type: "END_PEN_DRAG" });
+      return;
+    }
+
+    if (pathDrag) {
+      if (pathDrag.currentD !== pathDrag.origD) {
+        dispatch({ type: "UPDATE_ELEMENT", address: pathDrag.address, props: { d: pathDrag.currentD } });
+      }
+      setPathDrag(null);
       return;
     }
 
@@ -561,7 +646,7 @@ export default function CanvasPreview({
       }
       dispatch({ type: "SET_DRAG", dragState: null });
     }
-  }, [dragState, drawState, selection, parsedDoc, penState, dispatch, getCanvasCoords, isPanning]);
+  }, [dragState, drawState, selection, parsedDoc, penState, dispatch, getCanvasCoords, isPanning, pathDrag]);
 
   return (
     <div
