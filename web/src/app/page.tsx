@@ -386,7 +386,7 @@ layers:
         align: center
 `;
 
-const ORIGINAL_APPLE_MARK_YAML = `npng: "0.4"
+const NEWPNG_FRUIT_MARK_YAML = `npng: "0.4"
 canvas:
   width: 760
   height: 620
@@ -456,10 +456,12 @@ layers:
         radius: 16
     elements:
       - type: path
-        d: "M 374 190 C 337 154 279 150 233 184 C 181 222 160 304 185 391 C 210 474 268 538 317 546 C 343 551 354 523 381 522 C 407 522 421 550 452 537 C 508 515 561 430 574 356 C 582 316 570 291 550 273 C 530 287 502 284 487 263 C 472 241 482 216 505 205 C 469 164 411 155 374 190 Z"
-        fill: "#111827"
+        id: fruit-glow-silhouette
+        name: Pear-drop glow silhouette
+        d: "M 384 142 C 318 142 253 186 219 255 C 174 346 209 470 300 530 C 337 554 367 548 386 522 C 405 548 437 552 474 526 C 563 463 586 335 535 246 C 499 183 447 142 384 142 Z"
+        fill: "#0F172A"
 
-  - name: "main body"
+  - name: "main fruit body"
     filters:
       - type: drop-shadow
         dx: 0
@@ -468,7 +470,9 @@ layers:
         color: "#0F172A4D"
     elements:
       - type: path
-        d: "M 374 190 C 337 154 279 150 233 184 C 181 222 160 304 185 391 C 210 474 268 538 317 546 C 343 551 354 523 381 522 C 407 522 421 550 452 537 C 508 515 561 430 574 356 C 582 316 570 291 550 273 C 530 287 502 284 487 263 C 472 241 482 216 505 205 C 469 164 411 155 374 190 Z"
+        id: fruit-body-primary
+        name: Original pear-drop body
+        d: "M 384 142 C 318 142 253 186 219 255 C 174 346 209 470 300 530 C 337 554 367 548 386 522 C 405 548 437 552 474 526 C 563 463 586 335 535 246 C 499 183 447 142 384 142 Z"
         fills:
           - fill:
               type: linear-gradient
@@ -515,27 +519,29 @@ layers:
           - color: "#020617"
             width: 1
 
-  - name: "bite polish"
+  - name: "negative-space ribbon"
     elements:
       - type: path
-        d: "M 550 273 C 530 287 502 284 487 263 C 472 241 482 216 505 205"
-        fill: "none"
-        stroke:
-          color: "#FFFFFF78"
-          width: 4
-          cap: round
+        id: inner-ribbon-cut
+        name: Background-colored inner ribbon
+        d: "M 414 190 C 359 229 332 292 344 363 C 354 420 384 464 429 493 C 376 493 323 460 296 405 C 257 326 287 229 367 178 C 386 166 407 167 414 190 Z"
+        fill: "#F5F7FB"
       - type: path
-        d: "M 552 278 C 533 294 498 289 481 265"
+        id: ribbon-inner-shadow
+        name: Ribbon inner shadow edge
+        d: "M 407 199 C 350 247 331 326 360 402"
         fill: "none"
         stroke:
-          color: "#02061766"
-          width: 2
+          color: "#CBD5E1B0"
+          width: 4
           cap: round
 
   - name: "body sculpting"
     elements:
       - type: path
-        d: "M 235 218 C 266 180 323 174 360 205 C 303 214 255 259 229 331 C 213 281 214 244 235 218 Z"
+        id: fruit-left-gloss
+        name: Wide left gloss
+        d: "M 247 248 C 285 184 354 163 384 190 C 321 222 282 289 271 374 C 238 329 229 282 247 248 Z"
         fill:
           type: linear-gradient
           x1: 228
@@ -550,21 +556,25 @@ layers:
             - offset: 1
               color: "#FFFFFF00"
       - type: path
-        d: "M 283 493 C 319 516 369 520 418 497"
+        id: lower-smile-gloss
+        name: Lower contour gloss
+        d: "M 286 486 C 324 517 379 528 436 500"
         fill: "none"
         stroke:
           color: "#FFFFFF3D"
           width: 5
           cap: round
       - type: path
-        d: "M 518 364 C 496 444 455 500 412 520"
+        id: right-depth-curve
+        name: Right depth contour
+        d: "M 517 318 C 524 404 482 482 421 518"
         fill: "none"
         stroke:
           color: "#64748B45"
           width: 5
           cap: round
 
-  - name: "stem and leaf"
+  - name: "orbit crown"
     filters:
       - type: drop-shadow
         dx: 0
@@ -573,7 +583,9 @@ layers:
         color: "#0F172A45"
     elements:
       - type: path
-        d: "M 365 188 C 352 142 369 96 414 65 C 433 109 419 163 381 203 Z"
+        id: floating-stem-capsule
+        name: Floating asymmetric capsule
+        d: "M 357 146 C 351 105 384 75 429 72 C 431 121 403 159 366 176 Z"
         fills:
           - fill:
               type: linear-gradient
@@ -603,7 +615,9 @@ layers:
           color: "#FFFFFF70"
           width: 1.5
       - type: path
-        d: "M 394 148 C 426 88 500 57 568 86 C 543 153 467 187 394 148 Z"
+        id: orbit-sail
+        name: Orbit sail
+        d: "M 425 129 C 477 82 552 78 610 122 C 559 177 485 177 425 129 Z"
         fills:
           - fill:
               type: linear-gradient
@@ -635,7 +649,9 @@ layers:
           color: "#FFFFFF72"
           width: 2
       - type: path
-        d: "M 421 140 C 459 124 505 99 544 86"
+        id: orbit-sail-vein
+        name: Orbit sail highlight
+        d: "M 454 129 C 497 119 548 117 588 124"
         fill: "none"
         stroke:
           color: "#FFFFFF6B"
@@ -648,7 +664,7 @@ layers:
       - type: text
         x: 380
         y: 590
-        content: "Original curve-built apple-style mark"
+        content: "Original NewPNG fruit mark benchmark"
         font_size: 13
         font_family: "sans-serif"
         fill: "#64748B"
@@ -962,8 +978,8 @@ const EXAMPLES = [
     yaml: SATISFACTION_PEACH_YAML,
   },
   {
-    name: "Original Apple-Style Mark",
-    yaml: ORIGINAL_APPLE_MARK_YAML,
+    name: "NewPNG Fruit Mark",
+    yaml: NEWPNG_FRUIT_MARK_YAML,
   },
   {
     name: "Four Tile Window Mark",
