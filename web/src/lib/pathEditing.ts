@@ -14,7 +14,7 @@ export type EditablePathCommand =
 
 export interface PathHandleRef {
   commandIndex: number;
-  role: "anchor" | "c1" | "c2" | "q";
+  role: "anchor" | "c1" | "c2" | "q" | "segment";
 }
 
 export interface PathHandle extends PathHandleRef, Point {}
@@ -23,6 +23,8 @@ export interface PathControlLine {
   from: Point;
   to: Point;
 }
+
+const LINE_TO_CURVE_MIN_DRAG = 1;
 
 const roundCoord = (value: number): number => {
   const rounded = Math.round(value * 10) / 10;
@@ -41,12 +43,120 @@ const movePoint = (point: Point, dx: number, dy: number): void => {
   point.y += dy;
 };
 
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+const midpoint = (a: Point, b: Point): Point => ({
+  x: lerp(a.x, b.x, 0.5),
+  y: lerp(a.y, b.y, 0.5),
+});
+
+const quadraticPoint = (start: Point, control: Point, end: Point, t: number): Point => {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * start.x + 2 * mt * t * control.x + t * t * end.x,
+    y: mt * mt * start.y + 2 * mt * t * control.y + t * t * end.y,
+  };
+};
+
+const cubicPoint = (start: Point, c1: Point, c2: Point, end: Point, t: number): Point => {
+  const mt = 1 - t;
+  return {
+    x: mt ** 3 * start.x + 3 * mt * mt * t * c1.x + 3 * mt * t * t * c2.x + t ** 3 * end.x,
+    y: mt ** 3 * start.y + 3 * mt * mt * t * c1.y + 3 * mt * t * t * c2.y + t ** 3 * end.y,
+  };
+};
+
+const handlePriority: Record<PathHandleRef["role"], number> = {
+  anchor: 3,
+  c1: 2,
+  c2: 2,
+  q: 2,
+  segment: 1,
+};
+
 export function isEditablePathData(d: string): boolean {
   return parsePath(d).every(([cmd]) => "MmLlHhVvCcSsQqTtZz".includes(cmd));
 }
 
 function hasAnchor(command: EditablePathCommand): command is Exclude<EditablePathCommand, { type: "Z" }> {
   return command.type !== "Z";
+}
+
+function samePoint(a: Point, b: Point): boolean {
+  return a.x === b.x && a.y === b.y;
+}
+
+function getSegmentGeometry(commands: EditablePathCommand[], commandIndex: number): { start: Point; end: Point } | null {
+  let current: Point | null = null;
+  let subpathStart: Point | null = null;
+
+  for (let i = 0; i <= commandIndex; i++) {
+    const command = commands[i];
+    if (!command) return null;
+
+    if (i === commandIndex) {
+      if (!current || command.type === "M") return null;
+      const end = command.type === "Z" ? subpathStart : command.point;
+      if (!end || samePoint(current, end)) return null;
+      return { start: current, end };
+    }
+
+    if (command.type === "M") {
+      current = command.point;
+      subpathStart = command.point;
+    } else if (command.type === "Z") {
+      current = subpathStart;
+    } else {
+      current = command.point;
+    }
+  }
+
+  return null;
+}
+
+function getSegmentHandlePoint(commands: EditablePathCommand[], commandIndex: number): Point | null {
+  const command = commands[commandIndex];
+  const segment = getSegmentGeometry(commands, commandIndex);
+  if (!command || !segment) return null;
+
+  if (command.type === "L" || command.type === "Z") return midpoint(segment.start, segment.end);
+  if (command.type === "Q") return quadraticPoint(segment.start, command.c, command.point, 0.5);
+  if (command.type === "C") return cubicPoint(segment.start, command.c1, command.c2, command.point, 0.5);
+  return null;
+}
+
+function getPerpendicularDragDistance(segment: { start: Point; end: Point }, dx: number, dy: number): number {
+  const segmentX = segment.end.x - segment.start.x;
+  const segmentY = segment.end.y - segment.start.y;
+  const length = Math.hypot(segmentX, segmentY);
+  if (length === 0) return Math.hypot(dx, dy);
+  return Math.abs(segmentX * dy - segmentY * dx) / length;
+}
+
+function moveIncomingHandle(command: EditablePathCommand, dx: number, dy: number): void {
+  if (command.type === "C") movePoint(command.c2, dx, dy);
+  if (command.type === "Q") movePoint(command.c, dx, dy);
+}
+
+function moveClosingEndpointForSubpathStart(
+  commands: EditablePathCommand[],
+  moveIndex: number,
+  oldStart: Point,
+  dx: number,
+  dy: number,
+): void {
+  for (let i = moveIndex + 1; i < commands.length; i++) {
+    const command = commands[i];
+    if (command.type === "M") return;
+    if (command.type !== "Z") continue;
+
+    const closingCommand = commands[i - 1];
+    if (closingCommand && hasAnchor(closingCommand) && samePoint(closingCommand.point, oldStart)) {
+      movePoint(closingCommand.point, dx, dy);
+      moveIncomingHandle(closingCommand, dx, dy);
+    }
+    return;
+  }
 }
 
 export function parseEditablePath(d: string): EditablePathCommand[] {
@@ -175,6 +285,10 @@ export function getPathHandles(d: string): PathHandle[] {
   const commands = parseEditablePath(d);
   const handles: PathHandle[] = [];
   commands.forEach((command, commandIndex) => {
+    const segmentPoint = getSegmentHandlePoint(commands, commandIndex);
+    if (segmentPoint) {
+      handles.push({ commandIndex, role: "segment", x: segmentPoint.x, y: segmentPoint.y });
+    }
     if (command.type === "C") {
       handles.push({ commandIndex, role: "c1", x: command.c1.x, y: command.c1.y });
       handles.push({ commandIndex, role: "c2", x: command.c2.x, y: command.c2.y });
@@ -191,20 +305,24 @@ export function getPathHandles(d: string): PathHandle[] {
 export function getPathControlLines(d: string): PathControlLine[] {
   const commands = parseEditablePath(d);
   const lines: PathControlLine[] = [];
-  let previousAnchor: Point | null = null;
+  let current: Point | null = null;
+  let subpathStart: Point | null = null;
   for (const command of commands) {
     if (command.type === "M") {
-      previousAnchor = command.point;
+      current = command.point;
+      subpathStart = command.point;
     } else if (command.type === "L") {
-      previousAnchor = command.point;
+      current = command.point;
     } else if (command.type === "C") {
-      if (previousAnchor) lines.push({ from: previousAnchor, to: command.c1 });
+      if (current) lines.push({ from: current, to: command.c1 });
       lines.push({ from: command.point, to: command.c2 });
-      previousAnchor = command.point;
+      current = command.point;
     } else if (command.type === "Q") {
-      if (previousAnchor) lines.push({ from: previousAnchor, to: command.c });
+      if (current) lines.push({ from: current, to: command.c });
       lines.push({ from: command.point, to: command.c });
-      previousAnchor = command.point;
+      current = command.point;
+    } else if (command.type === "Z") {
+      current = subpathStart;
     }
   }
   return lines;
@@ -216,7 +334,11 @@ export function getPathHandleAtPoint(d: string, x: number, y: number, tolerance 
   let closestDistance = Infinity;
   for (const handle of handles) {
     const distance = Math.hypot(handle.x - x, handle.y - y);
-    if (distance <= tolerance && distance < closestDistance) {
+    const isCloser = distance < closestDistance;
+    const hasPriority = Math.abs(distance - closestDistance) < 0.001
+      && closest
+      && handlePriority[handle.role] > handlePriority[closest.role];
+    if (distance <= tolerance && (isCloser || hasPriority)) {
       closest = handle;
       closestDistance = distance;
     }
@@ -230,9 +352,11 @@ export function updatePathHandle(d: string, handle: PathHandleRef, dx: number, d
   if (!command) return d;
 
   if (handle.role === "anchor" && hasAnchor(command)) {
+    const oldPoint = clonePoint(command.point);
     movePoint(command.point, dx, dy);
     if (command.type === "C") movePoint(command.c2, dx, dy);
     if (command.type === "Q") movePoint(command.c, dx, dy);
+    if (command.type === "M") moveClosingEndpointForSubpathStart(commands, handle.commandIndex, oldPoint, dx, dy);
 
     const next = commands[handle.commandIndex + 1];
     if (next?.type === "C") movePoint(next.c1, dx, dy);
@@ -243,6 +367,30 @@ export function updatePathHandle(d: string, handle: PathHandleRef, dx: number, d
     movePoint(command.c2, dx, dy);
   } else if (handle.role === "q" && command.type === "Q") {
     movePoint(command.c, dx, dy);
+  } else if (handle.role === "segment") {
+    const segment = getSegmentGeometry(commands, handle.commandIndex);
+    if (!segment || command.type === "M") return d;
+
+    if (command.type === "L" || command.type === "Z") {
+      if (getPerpendicularDragDistance(segment, dx, dy) < LINE_TO_CURVE_MIN_DRAG) return d;
+      const originalMid = midpoint(segment.start, segment.end);
+      const targetMid = { x: originalMid.x + dx, y: originalMid.y + dy };
+      const curve: EditablePathCommand = {
+        type: "Q",
+        c: {
+          x: 2 * targetMid.x - (segment.start.x + segment.end.x) / 2,
+          y: 2 * targetMid.y - (segment.start.y + segment.end.y) / 2,
+        },
+        point: clonePoint(segment.end),
+      };
+      if (command.type === "L") commands[handle.commandIndex] = curve;
+      else commands.splice(handle.commandIndex, 0, curve);
+    } else if (command.type === "Q") {
+      movePoint(command.c, dx * 2, dy * 2);
+    } else if (command.type === "C") {
+      movePoint(command.c1, (dx * 4) / 3, (dy * 4) / 3);
+      movePoint(command.c2, (dx * 4) / 3, (dy * 4) / 3);
+    }
   }
 
   return serializeEditablePath(commands);

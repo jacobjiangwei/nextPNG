@@ -248,6 +248,20 @@ export default function CanvasPreview({
 
           for (const handle of getPathHandles(editingD)) {
             const isAnchor = handle.role === "anchor";
+            const isSegment = handle.role === "segment";
+            if (isSegment) {
+              ctx.save();
+              ctx.translate(handle.x, handle.y);
+              ctx.rotate(Math.PI / 4);
+              ctx.fillStyle = "#F97316";
+              ctx.strokeStyle = "#FFEDD5";
+              ctx.lineWidth = 2;
+              ctx.fillRect(-5, -5, 10, 10);
+              ctx.strokeRect(-5, -5, 10, 10);
+              ctx.restore();
+              continue;
+            }
+
             ctx.beginPath();
             ctx.arc(handle.x, handle.y, isAnchor ? 7 : 5, 0, Math.PI * 2);
             ctx.fillStyle = isAnchor ? "#FFFFFF" : "#60A5FA";
@@ -264,7 +278,7 @@ export default function CanvasPreview({
             }
           }
 
-          const hint = "Path edit: drag white anchors or blue handles";
+          const hint = "Path edit: orange bends curves; white moves points; blue fine-tunes handles";
           ctx.font = "12px sans-serif";
           const textWidth = ctx.measureText(hint).width;
           const hintX = box.x;

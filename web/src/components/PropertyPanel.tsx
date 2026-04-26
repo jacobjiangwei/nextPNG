@@ -144,7 +144,7 @@ export default function PropertyPanel({ element, address, doc, dispatch }: Prope
         <Section title="Path Edit">
           {e.d && isEditablePathData(e.d) && !e.transform ? (
             <div className="text-zinc-400 leading-relaxed">
-              Drag the large white anchors or blue curve handles directly on the canvas.
+              Drag orange segment points to bend curves. White anchors move points; blue handles fine-tune bezier controls.
             </div>
           ) : (
             <div className="text-zinc-500 leading-relaxed">
