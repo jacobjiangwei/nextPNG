@@ -12,238 +12,271 @@ import YamlEditor from "../components/YamlEditor";
 
 const ORIGINAL_APPLE_MARK_YAML = `npng: "0.4"
 canvas:
-  width: 700
+  width: 760
   height: 620
-  background: "#0B1020"
+  background: "#F5F7FB"
 layers:
-  - name: "aurora background"
-    opacity: 0.75
-    blend_mode: screen
-    filters:
-      - type: blur
-        radius: 38
+  - name: "paper background"
     elements:
-      - type: ellipse
-        cx: 210
-        cy: 260
-        rx: 230
-        ry: 170
+      - type: rect
+        x: 0
+        y: 0
+        width: 760
+        height: 620
         fill:
-          type: radial-gradient
-          cx: 210
-          cy: 260
-          r: 230
+          type: linear-gradient
+          x1: 0
+          y1: 0
+          x2: 760
+          y2: 620
           stops:
             - offset: 0
-              color: "#FF3B7A90"
+              color: "#FFFFFF"
+            - offset: 0.55
+              color: "#F4F7FB"
             - offset: 1
-              color: "#FF3B7A00"
+              color: "#E7EDF7"
       - type: ellipse
-        cx: 500
-        cy: 260
-        rx: 220
-        ry: 160
+        cx: 376
+        cy: 326
+        rx: 270
+        ry: 280
         fill:
           type: radial-gradient
-          cx: 500
-          cy: 260
-          r: 220
+          cx: 376
+          cy: 290
+          r: 330
           stops:
             - offset: 0
-              color: "#FFB02075"
+              color: "#FFFFFF"
+            - offset: 0.7
+              color: "#E2E8F055"
             - offset: 1
-              color: "#FFB02000"
-      - type: ellipse
-        cx: 360
-        cy: 170
-        rx: 200
-        ry: 120
-        fill:
-          type: radial-gradient
-          cx: 360
-          cy: 170
-          r: 200
-          stops:
-            - offset: 0
-              color: "#6C63FF70"
-            - offset: 1
-              color: "#6C63FF00"
+              color: "#CBD5E100"
 
-  - name: "soft ground shadow"
-    opacity: 0.7
-    filters:
-      - type: blur
-        radius: 22
-    elements:
-      - type: ellipse
-        cx: 352
-        cy: 474
-        rx: 168
-        ry: 35
-        fill: "#00000080"
-
-  - name: "apple glow"
-    opacity: 0.55
-    blend_mode: screen
+  - name: "ground shadow"
+    opacity: 0.58
     filters:
       - type: blur
         radius: 18
     elements:
-      - type: path
-        d: "M 305 183 C 263 145 202 148 161 190 C 118 234 116 311 148 388 C 178 460 229 511 268 524 C 285 529 296 515 312 515 C 328 515 342 531 361 523 C 406 504 451 445 480 374 C 512 294 491 219 446 183 C 407 151 345 151 305 183 Z"
-        fill: "#FF5A7A"
+      - type: ellipse
+        cx: 383
+        cy: 525
+        rx: 172
+        ry: 34
+        fill: "#0F172A55"
+      - type: ellipse
+        cx: 398
+        cy: 512
+        rx: 122
+        ry: 20
+        fill: "#33415555"
 
-  - name: "apple body"
+  - name: "body outer glow"
+    opacity: 0.36
+    filters:
+      - type: blur
+        radius: 16
+    elements:
+      - type: path
+        d: "M 374 190 C 337 154 279 150 233 184 C 181 222 160 304 185 391 C 210 474 268 538 317 546 C 343 551 354 523 381 522 C 407 522 421 550 452 537 C 508 515 561 430 574 356 C 582 316 570 291 550 273 C 530 287 502 284 487 263 C 472 241 482 216 505 205 C 469 164 411 155 374 190 Z"
+        fill: "#111827"
+
+  - name: "main body"
     filters:
       - type: drop-shadow
         dx: 0
-        dy: 18
+        dy: 22
         radius: 28
-        color: "#00000065"
+        color: "#0F172A4D"
     elements:
       - type: path
-        d: "M 305 183 C 263 145 202 148 161 190 C 118 234 116 311 148 388 C 178 460 229 511 268 524 C 285 529 296 515 312 515 C 328 515 342 531 361 523 C 406 504 451 445 480 374 C 512 294 491 219 446 183 C 407 151 345 151 305 183 Z"
+        d: "M 374 190 C 337 154 279 150 233 184 C 181 222 160 304 185 391 C 210 474 268 538 317 546 C 343 551 354 523 381 522 C 407 522 421 550 452 537 C 508 515 561 430 574 356 C 582 316 570 291 550 273 C 530 287 502 284 487 263 C 472 241 482 216 505 205 C 469 164 411 155 374 190 Z"
         fills:
           - fill:
               type: linear-gradient
-              x1: 168
-              y1: 155
-              x2: 485
-              y2: 520
+              x1: 205
+              y1: 170
+              x2: 555
+              y2: 560
               stops:
                 - offset: 0
-                  color: "#FF3B6B"
-                - offset: 0.48
-                  color: "#FF5F2E"
+                  color: "#475569"
+                - offset: 0.26
+                  color: "#111827"
+                - offset: 0.68
+                  color: "#030712"
                 - offset: 1
-                  color: "#FFD166"
+                  color: "#334155"
           - fill:
               type: radial-gradient
-              cx: 246
-              cy: 229
+              cx: 285
+              cy: 245
+              r: 230
+              stops:
+                - offset: 0
+                  color: "#FFFFFF55"
+                - offset: 0.34
+                  color: "#FFFFFF18"
+                - offset: 0.75
+                  color: "#FFFFFF00"
+            opacity: 0.9
+          - fill:
+              type: radial-gradient
+              cx: 495
+              cy: 500
               r: 210
               stops:
                 - offset: 0
-                  color: "#FFFFFF65"
-                - offset: 0.38
-                  color: "#FFFFFF12"
+                  color: "#94A3B822"
                 - offset: 1
-                  color: "#FFFFFF00"
-            opacity: 0.65
+                  color: "#94A3B800"
+            opacity: 0.85
         strokes:
-          - color: "#FFFFFF45"
+          - color: "#FFFFFF7A"
             width: 2
-          - color: "#22081655"
+          - color: "#020617"
             width: 1
 
-  - name: "bite cutout"
-    elements:
-      - type: ellipse
-        cx: 474
-        cy: 259
-        rx: 52
-        ry: 58
-        fill: "#0B1020"
-      - type: ellipse
-        cx: 491
-        cy: 306
-        rx: 43
-        ry: 45
-        fill: "#0B1020"
-      - type: ellipse
-        cx: 455
-        cy: 326
-        rx: 34
-        ry: 34
-        fill: "#0B1020"
-
-  - name: "surface highlights"
-    opacity: 0.78
+  - name: "bite polish"
     elements:
       - type: path
-        d: "M 196 220 C 222 185 264 173 302 195 C 253 207 217 245 198 302 C 190 274 187 245 196 220 Z"
+        d: "M 550 273 C 530 287 502 284 487 263 C 472 241 482 216 505 205"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF78"
+          width: 4
+          cap: round
+      - type: path
+        d: "M 552 278 C 533 294 498 289 481 265"
+        fill: "none"
+        stroke:
+          color: "#02061766"
+          width: 2
+          cap: round
+
+  - name: "body sculpting"
+    elements:
+      - type: path
+        d: "M 235 218 C 266 180 323 174 360 205 C 303 214 255 259 229 331 C 213 281 214 244 235 218 Z"
         fill:
           type: linear-gradient
-          x1: 190
-          y1: 178
-          x2: 305
-          y2: 304
+          x1: 228
+          y1: 184
+          x2: 360
+          y2: 332
           stops:
             - offset: 0
-              color: "#FFFFFF85"
+              color: "#FFFFFF7D"
+            - offset: 0.42
+              color: "#FFFFFF2E"
             - offset: 1
               color: "#FFFFFF00"
       - type: path
-        d: "M 253 485 C 285 505 319 506 354 486"
+        d: "M 283 493 C 319 516 369 520 418 497"
         fill: "none"
         stroke:
-          color: "#FFFFFF45"
-          width: 4
+          color: "#FFFFFF3D"
+          width: 5
+          cap: round
+      - type: path
+        d: "M 518 364 C 496 444 455 500 412 520"
+        fill: "none"
+        stroke:
+          color: "#64748B45"
+          width: 5
           cap: round
 
   - name: "stem and leaf"
     filters:
       - type: drop-shadow
         dx: 0
-        dy: 6
-        radius: 10
-        color: "#00000050"
+        dy: 10
+        radius: 14
+        color: "#0F172A45"
     elements:
       - type: path
-        d: "M 314 179 C 310 142 322 112 348 90 C 358 105 359 140 337 184 Z"
-        fill:
-          type: linear-gradient
-          x1: 322
-          y1: 90
-          x2: 345
-          y2: 184
-          stops:
-            - offset: 0
-              color: "#8B5E34"
-            - offset: 1
-              color: "#3F2419"
-      - type: path
-        d: "M 335 139 C 366 82 429 56 488 80 C 468 136 406 172 335 139 Z"
-        fill:
-          type: linear-gradient
-          x1: 344
-          y1: 142
-          x2: 480
-          y2: 70
-          stops:
-            - offset: 0
-              color: "#7CFF8D"
-            - offset: 0.55
-              color: "#2ED573"
-            - offset: 1
-              color: "#0B8F5A"
+        d: "M 365 188 C 352 142 369 96 414 65 C 433 109 419 163 381 203 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 366
+              y1: 68
+              x2: 395
+              y2: 202
+              stops:
+                - offset: 0
+                  color: "#64748B"
+                - offset: 0.55
+                  color: "#111827"
+                - offset: 1
+                  color: "#020617"
+          - fill:
+              type: radial-gradient
+              cx: 385
+              cy: 97
+              r: 70
+              stops:
+                - offset: 0
+                  color: "#FFFFFF42"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.8
         stroke:
-          color: "#D5FFD880"
+          color: "#FFFFFF70"
           width: 1.5
       - type: path
-        d: "M 360 132 C 397 116 426 96 459 82"
+        d: "M 394 148 C 426 88 500 57 568 86 C 543 153 467 187 394 148 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 398
+              y1: 154
+              x2: 562
+              y2: 82
+              stops:
+                - offset: 0
+                  color: "#1F2937"
+                - offset: 0.46
+                  color: "#020617"
+                - offset: 1
+                  color: "#475569"
+          - fill:
+              type: radial-gradient
+              cx: 505
+              cy: 90
+              r: 100
+              stops:
+                - offset: 0
+                  color: "#FFFFFF4A"
+                - offset: 0.55
+                  color: "#FFFFFF10"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.9
+        stroke:
+          color: "#FFFFFF72"
+          width: 2
+      - type: path
+        d: "M 421 140 C 459 124 505 99 544 86"
         fill: "none"
         stroke:
-          color: "#E9FFE880"
-          width: 2
+          color: "#FFFFFF6B"
+          width: 2.4
           cap: round
 
   - name: "caption"
+    opacity: 0.8
     elements:
       - type: text
-        x: 350
-        y: 575
-        font_size: 16
+        x: 380
+        y: 590
+        content: "Original curve-built apple-style mark"
+        font_size: 13
         font_family: "sans-serif"
+        fill: "#64748B"
         align: center
-        spans:
-          - text: "Original "
-            fill: "#94A3B8"
-          - text: "NewPNG"
-            bold: true
-            fill: "#FFFFFF"
-          - text: " apple mark demo"
-            fill: "#94A3B8"
 `;
 
 const FOUR_TILE_WINDOW_MARK_YAML = `npng: "0.4"
@@ -549,12 +582,12 @@ layers:
 
 const EXAMPLES = [
   {
-    name: "Four Tile Window Mark",
-    yaml: FOUR_TILE_WINDOW_MARK_YAML,
+    name: "Original Apple-Style Mark",
+    yaml: ORIGINAL_APPLE_MARK_YAML,
   },
   {
-    name: "Apple Curve Stress Test",
-    yaml: ORIGINAL_APPLE_MARK_YAML,
+    name: "Four Tile Window Mark",
+    yaml: FOUR_TILE_WINDOW_MARK_YAML,
   },
   {
     name: "Hello World",
