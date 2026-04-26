@@ -28,6 +28,8 @@ interface HandleRect {
 }
 
 const HANDLE_SIZE = 8;
+const ROTATION_HANDLE_OFFSET = 28;
+const ROTATION_HANDLE_RADIUS = 6;
 
 export function getHandles(box: BoundingBox): HandleRect[] {
   const { x, y, width: w, height: h } = box;
@@ -54,6 +56,19 @@ export function getHandleAtPoint(box: BoundingBox, px: number, py: number): Hand
   return null;
 }
 
+export function getRotationHandle(box: BoundingBox): { x: number; y: number; radius: number } {
+  return {
+    x: box.x + box.width / 2,
+    y: box.y - ROTATION_HANDLE_OFFSET,
+    radius: ROTATION_HANDLE_RADIUS,
+  };
+}
+
+export function getRotationHandleAtPoint(box: BoundingBox, px: number, py: number): boolean {
+  const handle = getRotationHandle(box);
+  return Math.hypot(px - handle.x, py - handle.y) <= handle.radius + 4;
+}
+
 export function cursorForHandle(handle: HandleId | null): string {
   if (!handle) return "default";
   const map: Record<HandleId, string> = {
@@ -76,6 +91,66 @@ function moveTransformOrigin(element: NpngElement, dx: number, dy: number): { tr
     transform: {
       ...element.transform,
       origin: [element.transform.origin[0] + dx, element.transform.origin[1] + dy],
+    },
+  };
+}
+
+function boxCenter(box: BoundingBox): [number, number] {
+  return [box.x + box.width / 2, box.y + box.height / 2];
+}
+
+function angleDegrees(cx: number, cy: number, x: number, y: number): number {
+  return (Math.atan2(y - cy, x - cx) * 180) / Math.PI;
+}
+
+export function getRotationOrigProps(
+  element: NpngElement,
+  untransformedBox: BoundingBox,
+  startX: number,
+  startY: number
+): Record<string, number> {
+  const [defaultOriginX, defaultOriginY] = boxCenter(untransformedBox);
+  const hasExplicitOrigin = !!element.transform?.origin;
+  const preserveMissingOrigin =
+    !!element.transform &&
+    !hasExplicitOrigin &&
+    (element.transform.rotate !== undefined || element.transform.scale !== undefined);
+  const [originX, originY] = preserveMissingOrigin ? [0, 0] : element.transform?.origin ?? [defaultOriginX, defaultOriginY];
+  const [translateX, translateY] = element.transform?.translate ?? [0, 0];
+  const visualOriginX = originX + translateX;
+  const visualOriginY = originY + translateY;
+  return {
+    originX,
+    originY,
+    visualOriginX,
+    visualOriginY,
+    rotate: element.transform?.rotate ?? 0,
+    preserveMissingOrigin: preserveMissingOrigin ? 1 : 0,
+    startAngle: angleDegrees(visualOriginX, visualOriginY, startX, startY),
+  };
+}
+
+export function applyRotation(element: NpngElement, x: number, y: number, origProps: Record<string, number>): Record<string, unknown> {
+  const originX = origProps.originX ?? 0;
+  const originY = origProps.originY ?? 0;
+  const visualOriginX = origProps.visualOriginX ?? originX;
+  const visualOriginY = origProps.visualOriginY ?? originY;
+  const startAngle = origProps.startAngle ?? 0;
+  const initialRotate = origProps.rotate ?? 0;
+  const nextRotate = roundCoord(initialRotate + angleDegrees(visualOriginX, visualOriginY, x, y) - startAngle);
+  if (origProps.preserveMissingOrigin) {
+    const transform: TransformSpec = {
+      ...element.transform,
+      rotate: nextRotate,
+    };
+    delete transform.origin;
+    return { transform };
+  }
+  return {
+    transform: {
+      ...element.transform,
+      rotate: nextRotate,
+      origin: [roundCoord(originX), roundCoord(originY)] as [number, number],
     },
   };
 }
@@ -133,6 +208,28 @@ export function applyMove(element: NpngElement, dx: number, dy: number, origProp
       };
     case "path":
       return e.d ? { d: translatePathData(e.d, dx, dy), ...moveTransformOrigin(element, dx, dy) } : moveTransformOrigin(element, dx, dy);
+    case "group":
+      if (element.transform) {
+        const currentTranslate = element.transform.translate ?? [0, 0];
+        return {
+          transform: {
+            ...element.transform,
+            translate: [
+              (origProps.translateX ?? currentTranslate[0]) + dx,
+              (origProps.translateY ?? currentTranslate[1]) + dy,
+            ],
+          },
+        };
+      }
+      return {
+        elements: (element.elements ?? []).map((child) => {
+          const movedChild = structuredClone(child);
+          const props = applyMove(child, dx, dy, getOrigProps(child));
+          Object.assign(movedChild, props);
+          return movedChild;
+        }),
+        ...moveTransformOrigin(element, dx, dy),
+      };
     default:
       return {};
   }
@@ -162,6 +259,14 @@ export function applyResize(
       if (handle.includes("s") || handle.includes("n")) ry = Math.max(1, ry + (handle.includes("n") ? -dy / 2 : dy / 2));
       return { cx: Math.round(cx), cy: Math.round(cy), rx: Math.round(rx), ry: Math.round(ry) };
     }
+    case "text": {
+      if (element.spans?.length) return {};
+      let { x, width } = origProps as { x: number; width: number };
+      if (!width || width <= 0) return {};
+      if (handle.includes("w")) { x += dx; width -= dx; }
+      if (handle.includes("e")) { width += dx; }
+      return { x: Math.round(x), width: Math.max(1, Math.round(width)) };
+    }
     default:
       return {};
   }
@@ -174,7 +279,8 @@ export function getOrigProps(element: NpngElement): Record<string, number> {
     case "ellipse": return { cx: e.cx ?? 0, cy: e.cy ?? 0, rx: e.rx ?? 0, ry: e.ry ?? 0 };
     case "line": return { x1: e.x1 ?? 0, y1: e.y1 ?? 0, x2: e.x2 ?? 0, y2: e.y2 ?? 0 };
     case "path": return {};
-    case "text": return { x: e.x ?? 0, y: e.y ?? 0 };
+    case "group": return { translateX: element.transform?.translate?.[0] ?? 0, translateY: element.transform?.translate?.[1] ?? 0 };
+    case "text": return { x: e.x ?? 0, y: e.y ?? 0, width: e.width ?? 0 };
     case "image": return { x: e.x ?? 0, y: e.y ?? 0, width: e.width ?? 100, height: e.height ?? 100 };
     case "frame": return { x: e.x ?? 0, y: e.y ?? 0, width: e.width ?? 0, height: e.height ?? 0 };
     case "component-instance": return { x: e.x ?? 0, y: e.y ?? 0, width: e.width ?? 100, height: e.height ?? 100 };

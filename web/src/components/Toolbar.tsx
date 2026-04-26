@@ -8,6 +8,8 @@ interface ToolbarProps {
   zoom: number;
   showGrid: boolean;
   dispatch: React.Dispatch<EditorAction>;
+  exportScale: number;
+  onExportScaleChange: (scale: number) => void;
   onExportPng: () => void;
   onDownloadNpng: () => void;
   onLoadExample: (yaml: string) => void;
@@ -24,7 +26,7 @@ const BASIC_TOOLS: { id: Tool; label: string }[] = [
   { id: "ellipse", label: "Ellipse" },
   { id: "line", label: "Line" },
   { id: "text", label: "Text" },
-  { id: "pen", label: "Pen" },
+  { id: "pen", label: "Vector Pen" },
   { id: "polyline", label: "Polyline" },
   { id: "polygon", label: "Polygon" },
   { id: "frame", label: "Frame" },
@@ -37,7 +39,7 @@ const SHAPE_TOOLS: { id: Tool; label: string }[] = [
 ];
 
 export default function Toolbar({
-  activeTool, zoom, showGrid, dispatch, onExportPng, onDownloadNpng, onLoadExample, onFitToScreen, onImageUpload, examples, canUndo, canRedo,
+  activeTool, zoom, showGrid, dispatch, exportScale, onExportScaleChange, onExportPng, onDownloadNpng, onLoadExample, onFitToScreen, onImageUpload, examples, canUndo, canRedo,
 }: ToolbarProps) {
   const [shapesOpen, setShapesOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +90,7 @@ export default function Toolbar({
               : "text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700"
           }`}
         >
-          Shapes
+          Vector Shapes
         </button>
         {shapesOpen && (
           <div className="absolute left-0 top-full mt-1 w-32 bg-zinc-800 border border-zinc-600 rounded shadow-lg z-50">
@@ -194,9 +196,20 @@ export default function Toolbar({
       <button
         onClick={onExportPng}
         className="px-3 py-1 text-xs bg-zinc-700 rounded hover:bg-zinc-600 text-zinc-300"
+        title={`Export a ${exportScale}x PNG`}
       >
         Export PNG
       </button>
+      <select
+        value={exportScale}
+        onChange={(e) => onExportScaleChange(Number(e.target.value))}
+        className="px-2 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded text-zinc-300"
+        title="PNG export scale"
+      >
+        <option value={1}>1x</option>
+        <option value={2}>2x</option>
+        <option value={4}>4x</option>
+      </select>
       <button
         onClick={onDownloadNpng}
         className="px-3 py-1 text-xs bg-zinc-700 rounded hover:bg-zinc-600 text-zinc-300"

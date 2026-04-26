@@ -395,3 +395,65 @@ export function updatePathHandle(d: string, handle: PathHandleRef, dx: number, d
 
   return serializeEditablePath(commands);
 }
+
+function countAnchors(commands: EditablePathCommand[]): number {
+  return commands.filter(hasAnchor).length;
+}
+
+export function insertPathAnchor(d: string, handle: PathHandleRef): string {
+  if (handle.role !== "segment") return d;
+  const commands = parseEditablePath(d);
+  const command = commands[handle.commandIndex];
+  const segment = getSegmentGeometry(commands, handle.commandIndex);
+  if (!command || !segment || command.type === "M") return d;
+
+  if (command.type === "L" || command.type === "Z") {
+    const inserted: EditablePathCommand = { type: "L", point: getSegmentHandlePoint(commands, handle.commandIndex) ?? midpoint(segment.start, segment.end) };
+    commands.splice(handle.commandIndex, 0, inserted);
+  } else if (command.type === "Q") {
+    const p01 = midpoint(segment.start, command.c);
+    const p12 = midpoint(command.c, command.point);
+    const p012 = midpoint(p01, p12);
+    commands.splice(
+      handle.commandIndex,
+      1,
+      { type: "Q", c: p01, point: p012 },
+      { type: "Q", c: p12, point: clonePoint(command.point) },
+    );
+  } else if (command.type === "C") {
+    const p01 = midpoint(segment.start, command.c1);
+    const p12 = midpoint(command.c1, command.c2);
+    const p23 = midpoint(command.c2, command.point);
+    const p012 = midpoint(p01, p12);
+    const p123 = midpoint(p12, p23);
+    const p0123 = midpoint(p012, p123);
+    commands.splice(
+      handle.commandIndex,
+      1,
+      { type: "C", c1: p01, c2: p012, point: p0123 },
+      { type: "C", c1: p123, c2: p23, point: clonePoint(command.point) },
+    );
+  }
+
+  return serializeEditablePath(commands);
+}
+
+export function deletePathAnchor(d: string, handle: PathHandleRef): string {
+  if (handle.role !== "anchor") return d;
+  const commands = parseEditablePath(d);
+  const command = commands[handle.commandIndex];
+  if (!command || !hasAnchor(command) || countAnchors(commands) <= 2) return d;
+
+  if (command.type === "M") {
+    const nextIndex = commands.findIndex((candidate, index) => index > handle.commandIndex && hasAnchor(candidate));
+    if (nextIndex < 0) return d;
+    const next = commands[nextIndex];
+    if (!hasAnchor(next)) return d;
+    commands[nextIndex] = { type: "M", point: clonePoint(next.point) };
+    commands.splice(handle.commandIndex, 1);
+  } else {
+    commands.splice(handle.commandIndex, 1);
+  }
+
+  return serializeEditablePath(commands);
+}

@@ -9,6 +9,70 @@ export interface BoundingBox {
   height: number;
 }
 
+let textMeasureContext: CanvasRenderingContext2D | null = null;
+
+function getTextMeasureContext(): CanvasRenderingContext2D | null {
+  if (typeof document === "undefined") return null;
+  if (textMeasureContext) return textMeasureContext;
+  const canvas = document.createElement("canvas");
+  textMeasureContext = canvas.getContext("2d");
+  return textMeasureContext;
+}
+
+function countMeasuredWrappedLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): number {
+  const safeMaxWidth = Math.max(1, maxWidth);
+  let lineCount = 0;
+
+  const splitLongWord = (word: string): string[] => {
+    const chunks: string[] = [];
+    let chunk = "";
+    for (const char of Array.from(word)) {
+      const candidate = `${chunk}${char}`;
+      if (chunk && ctx.measureText(candidate).width > safeMaxWidth) {
+        chunks.push(chunk);
+        chunk = char;
+      } else {
+        chunk = candidate;
+      }
+    }
+    if (chunk) chunks.push(chunk);
+    return chunks;
+  };
+
+  for (const paragraph of text.split("\n")) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lineCount += 1;
+      continue;
+    }
+
+    let line = "";
+    for (const word of words) {
+      if (ctx.measureText(word).width > safeMaxWidth) {
+        if (line) {
+          lineCount += 1;
+          line = "";
+        }
+        const chunks = splitLongWord(word);
+        lineCount += Math.max(0, chunks.length - 1);
+        line = chunks[chunks.length - 1] ?? "";
+        continue;
+      }
+
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(candidate).width > safeMaxWidth) {
+        lineCount += 1;
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    lineCount += 1;
+  }
+
+  return Math.max(1, lineCount);
+}
+
 function emptyBounds(): { minX: number; minY: number; maxX: number; maxY: number } {
   return { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 }
@@ -202,6 +266,7 @@ function getRawBoundingBox(element: NpngElement): BoundingBox {
     case "text": {
       const fontSize = element.font_size ?? 16;
       const content = element.content ?? "";
+      const lineHeight = fontSize * (element.line_height && element.line_height > 0 ? element.line_height : 1.2);
       // Account for spans if present
       let approxWidth: number;
       if (element.spans && Array.isArray(element.spans) && element.spans.length > 0) {
@@ -215,10 +280,24 @@ function getRawBoundingBox(element: NpngElement): BoundingBox {
       }
       const x = element.x ?? 0, y = element.y ?? 0;
       const align = element.align ?? "left";
+      if (!element.spans?.length && element.width && element.width > 0) {
+        const measureContext = getTextMeasureContext();
+        let wrappedLineCount: number;
+        if (measureContext) {
+          measureContext.font = `${element.font_weight ?? "normal"} ${fontSize}px ${element.font_family ?? "sans-serif"}`;
+          wrappedLineCount = countMeasuredWrappedLines(measureContext, content, element.width);
+        } else {
+          const avgCharsPerLine = Math.max(1, Math.floor(element.width / Math.max(1, fontSize * 0.45)));
+          wrappedLineCount = content
+            .split("\n")
+            .reduce((sum, paragraph) => sum + Math.max(1, Math.ceil(paragraph.length / avgCharsPerLine)), 0);
+        }
+        return { x, y, width: element.width, height: Math.max(lineHeight, wrappedLineCount * lineHeight) };
+      }
       let bx = x;
       if (align === "center") bx = x - approxWidth / 2;
       else if (align === "right") bx = x - approxWidth;
-      return { x: bx, y: y - fontSize, width: approxWidth, height: fontSize * 1.2 };
+      return { x: bx, y: y - fontSize, width: approxWidth, height: lineHeight };
     }
     case "path": {
       const box = pathBoundingBox(element.d);
@@ -229,6 +308,10 @@ function getRawBoundingBox(element: NpngElement): BoundingBox {
         width: box.width + padding * 2,
         height: box.height + padding * 2,
       };
+    }
+    case "group": {
+      const boxes = (element.elements ?? []).map(getBoundingBox);
+      return mergeBoundingBoxes(boxes) ?? { x: 0, y: 0, width: 0, height: 0 };
     }
     case "image":
       return { x: element.x ?? 0, y: element.y ?? 0, width: element.width ?? 100, height: element.height ?? 100 };
@@ -284,9 +367,10 @@ export function hitTestAll(doc: NpngDocument, px: number, py: number): ElementAd
   const results: ElementAddress[] = [];
   for (let li = doc.layers.length - 1; li >= 0; li--) {
     const layer = doc.layers[li];
-    if (layer.visible === false) continue;
+    if (layer.visible === false || layer.locked) continue;
     const elements = layer.elements ?? [];
     for (let ei = elements.length - 1; ei >= 0; ei--) {
+      if (elements[ei].locked) continue;
       const box = getBoundingBox(elements[ei]);
       if (pointInBox(px, py, box)) {
         results.push({ layerIndex: li, elementIndex: ei });
@@ -301,9 +385,10 @@ export function hitTestBox(doc: NpngDocument, box: BoundingBox): ElementAddress[
   const results: ElementAddress[] = [];
   for (let li = 0; li < doc.layers.length; li++) {
     const layer = doc.layers[li];
-    if (layer.visible === false) continue;
+    if (layer.visible === false || layer.locked) continue;
     const elements = layer.elements ?? [];
     for (let ei = 0; ei < elements.length; ei++) {
+      if (elements[ei].locked) continue;
       if (boxesIntersect(getBoundingBox(elements[ei]), box)) {
         results.push({ layerIndex: li, elementIndex: ei });
       }

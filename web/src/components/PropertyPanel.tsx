@@ -44,6 +44,7 @@ const DISTRIBUTE_BUTTONS: { label: string; direction: DistributionCommand; title
 
 type EditableElement = NpngElement & {
   name?: string;
+  locked?: boolean;
   x?: number;
   y?: number;
   width?: number;
@@ -58,6 +59,7 @@ type EditableElement = NpngElement & {
   y2?: number;
   content?: string;
   font_size?: number;
+  line_height?: number;
   font_weight?: string;
   align?: "left" | "center" | "right";
   spans?: TextSpan[];
@@ -182,9 +184,23 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
               ))}
             </div>
           </Section>
+          <Section title="Structure">
+            <InspectorButton
+              title="Group selected objects (Cmd/Ctrl+G)"
+              onClick={() => dispatch({ type: "GROUP_SELECTION" })}
+            >
+              Group Selection
+            </InspectorButton>
+            <InspectorButton
+              title="Move selected objects to the top visible layer"
+              onClick={() => dispatch({ type: "MOVE_SELECTION_TO_TOP_LAYER" })}
+            >
+              Move to Top Layer
+            </InspectorButton>
+          </Section>
           <div className="text-zinc-500">
             Drag on canvas to move together. If objects overlap, click the stack and choose the exact object.
-            Cmd/Ctrl+D duplicates, arrow keys nudge, Cmd/Ctrl+A selects all.
+            Cmd/Ctrl+G groups, Cmd/Ctrl+D duplicates, arrow keys nudge, Cmd/Ctrl+A selects all.
           </div>
         </div>
       );
@@ -208,6 +224,7 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
   const fillStr = typeof e.fill === "string" ? e.fill : (e.fill === null || e.fill === undefined ? "" : "gradient");
   const strokeColor = e.stroke?.color ?? "";
   const strokeWidth = e.stroke?.width ?? 1;
+  const isRichText = e.type === "text" && !!e.spans?.length;
 
   return (
     <div className="p-3 flex flex-col gap-1 text-xs overflow-auto">
@@ -229,6 +246,32 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
         </label>
         <div className="text-zinc-500 leading-relaxed">
           Type is the internal drawing primitive; name is what you recognize in the canvas, chooser, and layer list.
+          {e.type === "path" ? " Vector objects come from Vector Pen, Polyline/Polygon, or Vector Shapes." : ""}
+        </div>
+        <div className="flex gap-1">
+          <InspectorButton
+            title={e.locked ? "Unlock object" : "Lock object"}
+            onClick={() => dispatch({ type: "TOGGLE_ELEMENT_LOCK", address })}
+          >
+            {e.locked ? "Unlock" : "Lock"}
+          </InspectorButton>
+          <InspectorButton
+            title="Move this object to the top visible layer"
+            onClick={() => dispatch({ type: "MOVE_SELECTION_TO_TOP_LAYER" })}
+          >
+            Move to Top
+          </InspectorButton>
+          {e.type === "group" && (
+            <InspectorButton
+              title={!e.transform && (e.opacity === undefined || e.opacity === 1)
+                ? "Ungroup selected group (Cmd/Ctrl+Shift+G)"
+                : "Clear group transform/opacity before ungrouping"}
+              disabled={!!e.transform || (e.opacity !== undefined && e.opacity !== 1)}
+              onClick={() => dispatch({ type: "UNGROUP_SELECTION" })}
+            >
+              Ungroup
+            </InspectorButton>
+          )}
         </div>
       </Section>
 
@@ -236,7 +279,7 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
         <Section title="Path Edit">
           {e.d && isEditablePathData(e.d) && !e.transform ? (
             <div className="text-zinc-400 leading-relaxed">
-              Drag orange segment points to bend curves. White anchors move points; blue handles fine-tune bezier controls.
+              Drag orange segment points to bend curves. Shift-click orange points to insert anchors; Option/Alt-click white anchors to delete. Blue handles fine-tune bezier controls.
             </div>
           ) : (
             <div className="text-zinc-500 leading-relaxed">
@@ -288,7 +331,18 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
           <div className="grid grid-cols-2 gap-1">
             <NumberInput label="X" value={e.x ?? 0} onChange={v => update({ x: v })} />
             <NumberInput label="Y" value={e.y ?? 0} onChange={v => update({ y: v })} />
+            {!isRichText && (
+              <>
+                <NumberInput label="W" value={e.width ?? 0} onChange={v => update({ width: v > 0 ? v : null })} />
+                <NumberInput label="Line H" value={e.line_height ?? 1.2} onChange={v => update({ line_height: v > 0 ? v : null })} />
+              </>
+            )}
           </div>
+          {isRichText && (
+            <div className="text-zinc-500 leading-relaxed">
+              Rich text wrapping is not supported yet; use plain Text for resizable text boxes.
+            </div>
+          )}
           <label className="flex items-center gap-2 text-xs">
             <span className="w-12 text-zinc-500">Text</span>
             <input
@@ -323,7 +377,7 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
       )}
 
       {/* Fill */}
-      {e.type !== "line" && e.type !== "component-instance" && (
+      {e.type !== "line" && e.type !== "component-instance" && e.type !== "group" && (
         <Section title="Fill">
           {fillStr !== "gradient" ? (
             <ColorInput label="Color" value={fillStr || "#000000"} onChange={v => update({ fill: v })} />
@@ -334,7 +388,7 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
       )}
 
       {/* Multiple Fills */}
-      {e.type !== "line" && (
+      {e.type !== "line" && e.type !== "group" && (
         <FillsEditor
           fills={e.fills as FillLayer[] | undefined}
           singleFill={e.fill}
@@ -343,16 +397,19 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
       )}
 
       {/* Stroke */}
-      <Section title="Stroke">
-        <ColorInput label="Color" value={strokeColor} onChange={v => update({ stroke: { ...e.stroke, color: v } })} />
-        <NumberInput label="Width" value={strokeWidth} onChange={v => update({ stroke: { ...e.stroke, width: v } })} />
-      </Section>
+      {e.type !== "group" && (
+        <>
+          <Section title="Stroke">
+            <ColorInput label="Color" value={strokeColor} onChange={v => update({ stroke: { ...e.stroke, color: v } })} />
+            <NumberInput label="Width" value={strokeWidth} onChange={v => update({ stroke: { ...e.stroke, width: v } })} />
+          </Section>
 
-      {/* Multiple Strokes */}
-      <StrokesEditor
-        strokes={e.strokes as StrokeLayer[] | undefined}
-        onChange={(strokes) => update({ strokes: strokes.length > 0 ? strokes : null })}
-      />
+          <StrokesEditor
+            strokes={e.strokes as StrokeLayer[] | undefined}
+            onChange={(strokes) => update({ strokes: strokes.length > 0 ? strokes : null })}
+          />
+        </>
+      )}
 
       {/* Arrow endpoints for lines */}
       {e.type === "line" && (

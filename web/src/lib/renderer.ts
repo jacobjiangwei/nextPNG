@@ -7,6 +7,20 @@ import type { NpngDocument, NpngElement, FillSpec, StrokeSpec, TransformSpec, Fi
 const imageCache = new Map<string, HTMLImageElement>();
 const canvasRenderVersions = new WeakMap<HTMLCanvasElement, number>();
 
+interface RenderOptions {
+  pixelRatio?: number;
+}
+
+function getRenderPixelRatio(options?: RenderOptions): number {
+  const ratio = options?.pixelRatio ?? 1;
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+}
+
+function configureCanvasContext(ctx: CanvasRenderingContext2D): void {
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+}
+
 function isNpngElement(value: unknown): value is NpngElement {
   if (!value || typeof value !== "object") return false;
   const maybeElement = value as { type?: unknown };
@@ -24,6 +38,97 @@ function loadImage(href: string, onLoad?: () => void): HTMLImageElement | null {
   img.src = href;
   imageCache.set(href, img);
   return img.complete ? img : null;
+}
+
+function preloadImage(href: string): Promise<void> {
+  const cached = imageCache.get(href);
+  if (cached?.complete && cached.naturalWidth > 0) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const img = cached ?? new Image();
+    const cleanup = () => {
+      img.removeEventListener("load", handleLoad);
+      img.removeEventListener("error", handleError);
+    };
+    const handleLoad = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error(`Could not load image: ${href.slice(0, 80)}`));
+    };
+
+    img.addEventListener("load", handleLoad, { once: true });
+    img.addEventListener("error", handleError, { once: true });
+    if (!cached) {
+      imageCache.set(href, img);
+      img.src = href;
+    } else if (img.complete) {
+      cleanup();
+      if (img.naturalWidth > 0) resolve();
+      else reject(new Error(`Could not load image: ${href.slice(0, 80)}`));
+    }
+  });
+}
+
+function collectElementImageHrefs(
+  element: NpngElement,
+  hrefs: Set<string>,
+  components: ComponentDef[],
+  defs: Map<string, DefItem>,
+  resolvingComponentIds = new Set<string>()
+): void {
+  if (element.type === "image" && element.href) hrefs.add(element.href);
+  if (element.type === "group") {
+    for (const child of element.elements ?? []) collectElementImageHrefs(child, hrefs, components, defs, resolvingComponentIds);
+  }
+  if (element.type === "frame") {
+    for (const child of element.children ?? []) collectElementImageHrefs(child, hrefs, components, defs, resolvingComponentIds);
+  }
+  if (element.type === "use" && element.ref) {
+    const def = defs.get(element.ref);
+    if (def && isNpngElement(def)) collectElementImageHrefs(def, hrefs, components, defs, resolvingComponentIds);
+  }
+  if (element.type === "component-instance" && element.component_id && !resolvingComponentIds.has(element.component_id)) {
+    const nextResolving = new Set(resolvingComponentIds);
+    nextResolving.add(element.component_id);
+    const resolved = resolveInstance(element, components);
+    if (resolved) collectElementImageHrefs(resolved, hrefs, components, defs, nextResolving);
+  }
+}
+
+function collectMaskImageHrefs(def: DefItem, hrefs: Set<string>, components: ComponentDef[], defs: Map<string, DefItem>): void {
+  if (isNpngElement(def)) {
+    collectElementImageHrefs(def, hrefs, components, defs);
+    return;
+  }
+
+  const maybeElementList = def as { elements?: unknown };
+  if (Array.isArray(maybeElementList.elements)) {
+    for (const item of maybeElementList.elements) {
+      if (isNpngElement(item)) collectElementImageHrefs(item, hrefs, components, defs);
+    }
+  }
+}
+
+export async function preloadNpngImages(data: NpngDocument): Promise<void> {
+  const hrefs = new Set<string>();
+  const components = data.components ?? [];
+  const defs = new Map<string, DefItem>();
+  for (const def of data.defs ?? []) {
+    if (def.id) defs.set(def.id, def);
+  }
+
+  for (const layer of data.layers ?? []) {
+    if (layer.visible === false) continue;
+    for (const element of layer.elements ?? []) collectElementImageHrefs(element, hrefs, components, defs);
+    if (layer.mask && defs.has(layer.mask)) {
+      collectMaskImageHrefs(defs.get(layer.mask)!, hrefs, components, defs);
+    }
+  }
+
+  await Promise.all([...hrefs].map(preloadImage));
 }
 
 function applyFill(ctx: CanvasRenderingContext2D, fillSpec: FillSpec): boolean {
@@ -176,6 +281,65 @@ function renderFillsAndStrokes(
   }
 }
 
+function getTextLineHeight(fontSize: number, lineHeight?: number): number {
+  return fontSize * (lineHeight && lineHeight > 0 ? lineHeight : 1.2);
+}
+
+function wrapTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const paragraphs = text.split("\n");
+  const lines: string[] = [];
+  const safeMaxWidth = Math.max(1, maxWidth);
+
+  const splitLongWord = (word: string): string[] => {
+    const chunks: string[] = [];
+    let chunk = "";
+    for (const char of Array.from(word)) {
+      const candidate = `${chunk}${char}`;
+      if (chunk && ctx.measureText(candidate).width > safeMaxWidth) {
+        chunks.push(chunk);
+        chunk = char;
+      } else {
+        chunk = candidate;
+      }
+    }
+    if (chunk) chunks.push(chunk);
+    return chunks;
+  };
+
+  for (const paragraph of paragraphs) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
+    }
+
+    let line = "";
+    for (const word of words) {
+      if (ctx.measureText(word).width > safeMaxWidth) {
+        if (line) {
+          lines.push(line);
+          line = "";
+        }
+        const chunks = splitLongWord(word);
+        lines.push(...chunks.slice(0, -1));
+        line = chunks[chunks.length - 1] ?? "";
+        continue;
+      }
+
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(candidate).width > safeMaxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    lines.push(line);
+  }
+
+  return lines.length > 0 ? lines : [""];
+}
+
 function renderElement(
   ctx: CanvasRenderingContext2D,
   elem: NpngElement,
@@ -265,6 +429,20 @@ function renderElement(
     const fontFamily = e.font_family ?? "sans-serif";
     const fontWeight = e.font_weight ?? "normal";
     const align = e.align ?? "left";
+    const strokeText = (text: string, textX: number, textY: number) => {
+      if (e.strokes && e.strokes.length > 0) {
+        for (const stroke of e.strokes) {
+          ctx.save();
+          if (stroke.opacity !== undefined) ctx.globalAlpha *= stroke.opacity;
+          applyStrokeStyle(ctx, stroke);
+          ctx.strokeText(text, textX, textY);
+          ctx.restore();
+        }
+      } else if (e.stroke) {
+        applyStrokeStyle(ctx, e.stroke);
+        ctx.strokeText(text, textX, textY);
+      }
+    };
 
     if (e.spans && Array.isArray(e.spans) && e.spans.length > 0) {
       // Rich text rendering
@@ -287,17 +465,26 @@ function renderElement(
         const sWeight = span.bold ? "bold" : fontWeight;
         const sStyle = span.italic ? "italic" : "normal";
         ctx.font = `${sStyle} ${sWeight} ${sFontSize}px ${fontFamily}`;
-        const spanFill = span.fill ?? (typeof e.fill === "string" ? e.fill : "#000000");
-        const c = parseColor(spanFill);
-        ctx.fillStyle = c ? rgbaString(c) : "black";
-        ctx.fillText(span.text, curX, y);
+        const spanFill = span.fill ?? (typeof e.fill === "string" || e.fill === null ? e.fill : undefined);
+        let shouldFillSpan = true;
+        if (spanFill === undefined) {
+          ctx.fillStyle = "black";
+        } else if (spanFill === null || spanFill === "none") {
+          shouldFillSpan = false;
+        } else {
+          const c = parseColor(spanFill);
+          ctx.fillStyle = c ? rgbaString(c) : "black";
+        }
+        strokeText(span.text, curX, y);
+        if (shouldFillSpan) ctx.fillText(span.text, curX, y);
         const w = ctx.measureText(span.text).width;
-        if (span.underline) {
+        if (span.underline && shouldFillSpan) {
           ctx.beginPath();
           ctx.moveTo(curX, y + 2);
           ctx.lineTo(curX + w, y + 2);
           ctx.strokeStyle = ctx.fillStyle;
           ctx.lineWidth = 1;
+          ctx.setLineDash([]);
           ctx.stroke();
         }
         curX += w;
@@ -305,14 +492,33 @@ function renderElement(
     } else {
       const content = e.content ?? "";
       ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-      ctx.textAlign = align as CanvasTextAlign;
-      ctx.textBaseline = "alphabetic";
       const fill = e.fill as FillSpec | undefined;
-      if (applyFill(ctx, fill ?? null)) {
-        ctx.fillText(content, x, y);
-      } else {
+      let shouldFillText = true;
+      if (fill === undefined) {
         ctx.fillStyle = "black";
-        ctx.fillText(content, x, y);
+      } else if (fill === null || fill === "none") {
+        shouldFillText = false;
+      } else if (!applyFill(ctx, fill)) {
+        ctx.fillStyle = "black";
+      }
+      const drawText = (line: string, lineX: number, lineY: number) => {
+        strokeText(line, lineX, lineY);
+        if (shouldFillText) ctx.fillText(line, lineX, lineY);
+      };
+
+      if (e.width && e.width > 0) {
+        const lineHeight = getTextLineHeight(fontSize, e.line_height);
+        const lines = wrapTextLines(ctx, content, e.width);
+        ctx.textAlign = align as CanvasTextAlign;
+        ctx.textBaseline = "top";
+        const lineX = align === "center" ? x + e.width / 2 : align === "right" ? x + e.width : x;
+        lines.forEach((line, index) => {
+          drawText(line, lineX, y + index * lineHeight);
+        });
+      } else {
+        ctx.textAlign = align as CanvasTextAlign;
+        ctx.textBaseline = "alphabetic";
+        drawText(content, x, y);
       }
     }
   } else if (elem.type === "path") {
@@ -390,18 +596,23 @@ function renderElement(
   ctx.restore();
 }
 
-export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement): void {
+export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement, options?: RenderOptions): void {
   const renderVersion = (canvasRenderVersions.get(canvas) ?? 0) + 1;
   canvasRenderVersions.set(canvas, renderVersion);
 
   const canvasSpec = data.canvas ?? {};
   const width = canvasSpec.width ?? 800;
   const height = canvasSpec.height ?? 600;
-  canvas.width = width;
-  canvas.height = height;
+  const pixelRatio = getRenderPixelRatio(options);
+  const physicalWidth = Math.max(1, Math.round(width * pixelRatio));
+  const physicalHeight = Math.max(1, Math.round(height * pixelRatio));
+  canvas.width = physicalWidth;
+  canvas.height = physicalHeight;
 
   const ctx = canvas.getContext("2d")!;
-  ctx.clearRect(0, 0, width, height);
+  configureCanvasContext(ctx);
+  ctx.clearRect(0, 0, physicalWidth, physicalHeight);
+  ctx.scale(pixelRatio, pixelRatio);
 
   // Background
   const bg = parseColor(canvasSpec.background);
@@ -423,7 +634,7 @@ export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement): void 
     redrawScheduled = true;
     requestAnimationFrame(() => {
       if (canvasRenderVersions.get(canvas) === renderVersion) {
-        renderNpng(data, canvas);
+        renderNpng(data, canvas, options);
       }
     });
   };
@@ -439,9 +650,11 @@ export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement): void 
 
     // Render layer to offscreen canvas
     const offscreen = document.createElement("canvas");
-    offscreen.width = width;
-    offscreen.height = height;
+    offscreen.width = physicalWidth;
+    offscreen.height = physicalHeight;
     const lctx = offscreen.getContext("2d")!;
+    configureCanvasContext(lctx);
+    lctx.scale(pixelRatio, pixelRatio);
 
     // Clip path
     if (clipPath) {
@@ -456,21 +669,23 @@ export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement): void 
 
     // Apply filters
     if (layerFilters) {
-      applyCanvasFilters(offscreen, layerFilters);
+      applyCanvasFilters(offscreen, layerFilters, pixelRatio);
     }
 
     // Apply mask
     if (maskRef && defs.has(maskRef)) {
       const maskDef = defs.get(maskRef)! as DefItem & { elements?: NpngElement[] };
       const maskCanvas = document.createElement("canvas");
-      maskCanvas.width = width;
-      maskCanvas.height = height;
+      maskCanvas.width = physicalWidth;
+      maskCanvas.height = physicalHeight;
       const mctx = maskCanvas.getContext("2d")!;
+      configureCanvasContext(mctx);
+      mctx.scale(pixelRatio, pixelRatio);
       for (const melem of maskDef.elements ?? []) {
         renderElement(mctx, melem, defs, components, scheduleRedraw);
       }
-      const layerData = lctx.getImageData(0, 0, width, height);
-      const maskData = mctx.getImageData(0, 0, width, height);
+      const layerData = lctx.getImageData(0, 0, physicalWidth, physicalHeight);
+      const maskData = mctx.getImageData(0, 0, physicalWidth, physicalHeight);
       for (let i = 0; i < layerData.data.length; i += 4) {
         const ma = maskData.data[i + 3] / 255;
         layerData.data[i] = Math.round(layerData.data[i] * ma);
@@ -499,36 +714,45 @@ export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement): void 
       exclusion: "exclusion",
     };
     ctx.globalCompositeOperation = blendMap[blendMode] ?? "source-over";
-    ctx.drawImage(offscreen, 0, 0);
+    ctx.drawImage(offscreen, 0, 0, width, height);
     ctx.restore();
   }
 }
 
-function applyCanvasFilters(canvas: HTMLCanvasElement, filters: FilterSpec[]): void {
+function applyCanvasFilters(canvas: HTMLCanvasElement, filters: FilterSpec[], pixelRatio: number): void {
   const ctx = canvas.getContext("2d")!;
-  for (const f of filters) {
-    if (f.type === "blur" && f.radius) {
-      const temp = document.createElement("canvas");
-      temp.width = canvas.width;
-      temp.height = canvas.height;
-      const tctx = temp.getContext("2d")!;
-      tctx.filter = `blur(${f.radius}px)`;
-      tctx.drawImage(canvas, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(temp, 0, 0);
-    } else if (f.type === "drop-shadow") {
-      const color = f.color ?? "#00000080";
-      const temp = document.createElement("canvas");
-      temp.width = canvas.width;
-      temp.height = canvas.height;
-      const tctx = temp.getContext("2d")!;
-      tctx.shadowOffsetX = f.dx ?? 3;
-      tctx.shadowOffsetY = f.dy ?? 3;
-      tctx.shadowBlur = f.radius ?? 3;
-      tctx.shadowColor = color;
-      tctx.drawImage(canvas, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(temp, 0, 0);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  configureCanvasContext(ctx);
+  try {
+    for (const f of filters) {
+      if (f.type === "blur" && f.radius) {
+        const temp = document.createElement("canvas");
+        temp.width = canvas.width;
+        temp.height = canvas.height;
+        const tctx = temp.getContext("2d")!;
+        configureCanvasContext(tctx);
+        tctx.filter = `blur(${f.radius * pixelRatio}px)`;
+        tctx.drawImage(canvas, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(temp, 0, 0);
+      } else if (f.type === "drop-shadow") {
+        const color = f.color ?? "#00000080";
+        const temp = document.createElement("canvas");
+        temp.width = canvas.width;
+        temp.height = canvas.height;
+        const tctx = temp.getContext("2d")!;
+        configureCanvasContext(tctx);
+        tctx.shadowOffsetX = (f.dx ?? 3) * pixelRatio;
+        tctx.shadowOffsetY = (f.dy ?? 3) * pixelRatio;
+        tctx.shadowBlur = (f.radius ?? 3) * pixelRatio;
+        tctx.shadowColor = color;
+        tctx.drawImage(canvas, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(temp, 0, 0);
+      }
     }
+  } finally {
+    ctx.restore();
   }
 }

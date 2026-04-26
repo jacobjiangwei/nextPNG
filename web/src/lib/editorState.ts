@@ -1,7 +1,7 @@
 import yaml from "js-yaml";
 import { applyMove, getOrigProps } from "./canvasInteraction";
 import { getBoundingBox, mergeBoundingBoxes } from "./hitTest";
-import type { NpngDocument, NpngElement } from "./types";
+import type { GroupElement, NpngDocument, NpngElement } from "./types";
 
 export type Tool = "select" | "rect" | "ellipse" | "line" | "text"
   | "pen" | "polyline" | "polygon"
@@ -14,7 +14,7 @@ export interface ElementAddress {
 }
 
 export interface DragState {
-  type: "move" | "resize";
+  type: "move" | "resize" | "rotate";
   handle?: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
   startX: number;
   startY: number;
@@ -85,13 +85,18 @@ export type EditorAction =
   | { type: "UPDATE_ELEMENTS"; updates: ElementUpdate[] }
   | { type: "ALIGN_SELECTION"; alignment: AlignmentCommand }
   | { type: "DISTRIBUTE_SELECTION"; direction: DistributionCommand }
+  | { type: "GROUP_SELECTION" }
+  | { type: "UNGROUP_SELECTION" }
+  | { type: "MOVE_SELECTION_TO_TOP_LAYER" }
   | { type: "ADD_ELEMENT"; layerIndex: number; element: NpngElement }
   | { type: "DUPLICATE_SELECTION"; offset?: number }
   | { type: "DELETE_ELEMENT"; address: ElementAddress }
+  | { type: "TOGGLE_ELEMENT_LOCK"; address: ElementAddress }
   | { type: "SET_DRAG"; dragState: DragState | null }
   | { type: "SET_DRAW"; drawState: DrawState | null }
   | { type: "REORDER_ELEMENT"; from: ElementAddress; toIndex: number }
   | { type: "TOGGLE_LAYER_VISIBILITY"; layerIndex: number }
+  | { type: "TOGGLE_LAYER_LOCK"; layerIndex: number }
   | { type: "SET_ZOOM"; zoom: number }
   | { type: "SET_PAN"; panX: number; panY: number }
   | { type: "TOGGLE_GRID" }
@@ -160,12 +165,66 @@ function applyElementProps(element: NpngElement, props: Record<string, unknown>)
   }
 }
 
+function isEditableAddress(doc: NpngDocument, address: ElementAddress): boolean {
+  const layer = doc.layers?.[address.layerIndex];
+  const element = layer?.elements?.[address.elementIndex];
+  return !!layer && layer.visible !== false && !layer.locked && !!element && !element.locked;
+}
+
+function isEditableLayer(layer: NonNullable<NpngDocument["layers"]>[number]): boolean {
+  return layer.visible !== false && !layer.locked;
+}
+
+function isCleanInsertionLayer(layer: NonNullable<NpngDocument["layers"]>[number]): boolean {
+  return isEditableLayer(layer)
+    && (layer.opacity === undefined || layer.opacity === 1)
+    && (layer.blend_mode === undefined || layer.blend_mode === "normal")
+    && !layer.filters?.length
+    && !layer.clip_path
+    && !layer.mask;
+}
+
+function createTopInsertionLayer(doc: NpngDocument): number {
+  if (!doc.layers) doc.layers = [];
+  const layerNum = doc.layers.length + 1;
+  doc.layers.push({ name: `Layer ${layerNum}`, elements: [] });
+  return doc.layers.length - 1;
+}
+
+function ensureTopInsertionLayerIndex(doc: NpngDocument): number {
+  const layers = doc.layers ?? [];
+  if (layers.length === 0) return createTopInsertionLayer(doc);
+  const topLayer = layers[layers.length - 1];
+  return isCleanInsertionLayer(topLayer) ? layers.length - 1 : createTopInsertionLayer(doc);
+}
+
+function getInsertionLayerIndex(doc: NpngDocument, preferredIndex: number): number {
+  const layers = doc.layers ?? [];
+  if (layers.length === 0) return -1;
+  const requestedIndex = preferredIndex < 0
+    ? layers.length - 1
+    : Math.min(Math.max(0, preferredIndex), layers.length - 1);
+  if (isEditableLayer(layers[requestedIndex])) return requestedIndex;
+  for (let i = requestedIndex; i >= 0; i--) {
+    if (isEditableLayer(layers[i])) return i;
+  }
+  for (let i = requestedIndex + 1; i < layers.length; i++) {
+    if (isEditableLayer(layers[i])) return i;
+  }
+  return -1;
+}
+
+function canSafelyUngroup(element: NpngElement): element is GroupElement {
+  return element.type === "group" && !element.locked && !element.transform && (element.opacity === undefined || element.opacity === 1);
+}
+
 function applyElementUpdates(state: EditorState, updates: ElementUpdate[]): EditorState {
   const doc = state.parsedDoc;
   if (!doc?.layers || updates.length === 0) return state;
   const newDoc = structuredClone(doc);
   let changed = false;
   for (const update of updates) {
+    if (!isEditableAddress(newDoc, update.address)) continue;
     const element = newDoc.layers?.[update.address.layerIndex]?.elements?.[update.address.elementIndex];
     if (!element) continue;
     applyElementProps(element, update.props);
@@ -241,6 +300,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
 
     case "SELECT": {
       if (!action.address) return { ...state, selection: [] };
+      if (state.parsedDoc && !isEditableAddress(state.parsedDoc, action.address)) return { ...state, selection: [] };
       if (action.append) {
         const exists = state.selection.findIndex(s => sameAddress(s, action.address!));
         if (exists >= 0) {
@@ -252,9 +312,12 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     }
 
     case "SELECT_MANY": {
+      const addresses = state.parsedDoc
+        ? action.addresses.filter((address) => isEditableAddress(state.parsedDoc!, address))
+        : action.addresses;
       const nextSelection = action.append
-        ? uniqueAddresses([...state.selection, ...action.addresses])
-        : uniqueAddresses(action.addresses);
+        ? uniqueAddresses([...state.selection, ...addresses])
+        : uniqueAddresses(addresses);
       return { ...state, selection: nextSelection };
     }
 
@@ -264,8 +327,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const addresses: ElementAddress[] = [];
       doc.layers.forEach((layer, layerIndex) => {
         if (layer.visible === false) return;
+        if (layer.locked) return;
         (layer.elements ?? []).forEach((_, elementIndex) => {
-          addresses.push({ layerIndex, elementIndex });
+          const address = { layerIndex, elementIndex };
+          if (isEditableAddress(doc, address)) addresses.push(address);
         });
       });
       return { ...state, selection: addresses };
@@ -279,7 +344,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       if (!doc?.layers) return state;
       const { layerIndex, elementIndex } = action.address;
       const layer = doc.layers[layerIndex];
-      if (!layer?.elements?.[elementIndex]) return state;
+      if (!layer?.elements?.[elementIndex] || !isEditableAddress(doc, action.address)) return state;
       const newDoc = structuredClone(doc);
       const el = newDoc.layers![layerIndex].elements![elementIndex];
       applyElementProps(el, action.props);
@@ -296,7 +361,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       if (!doc?.layers || state.selection.length < 2) return state;
       const items = state.selection.flatMap((address) => {
         const element = doc.layers?.[address.layerIndex]?.elements?.[address.elementIndex];
-        return element ? [{ address, element, box: getBoundingBox(element) }] : [];
+        return element && isEditableAddress(doc, address) ? [{ address, element, box: getBoundingBox(element) }] : [];
       });
       const selectionBox = mergeBoundingBoxes(items.map((item) => item.box));
       if (!selectionBox) return state;
@@ -321,7 +386,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       if (!doc?.layers || state.selection.length < 3) return state;
       const items = state.selection.flatMap((address) => {
         const element = doc.layers?.[address.layerIndex]?.elements?.[address.elementIndex];
-        return element ? [{ address, element, box: getBoundingBox(element) }] : [];
+        return element && isEditableAddress(doc, address) ? [{ address, element, box: getBoundingBox(element) }] : [];
       });
       if (items.length < 3) return state;
 
@@ -346,18 +411,97 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return applyElementUpdates(state, updates);
     }
 
+    case "GROUP_SELECTION": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers || state.selection.length < 2) return state;
+      const layerIndex = state.selection[0].layerIndex;
+      if (state.selection.some((address) => address.layerIndex !== layerIndex || !isEditableAddress(doc, address))) return state;
+      const elements = doc.layers[layerIndex].elements ?? [];
+      const sorted = [...state.selection].sort((a, b) => a.elementIndex - b.elementIndex);
+      const groupedElements = sorted.flatMap((address) => {
+        const element = elements[address.elementIndex];
+        return element ? [structuredClone(element)] : [];
+      });
+      if (groupedElements.length < 2) return state;
+
+      const newDoc = structuredClone(doc);
+      const newElements = newDoc.layers![layerIndex].elements ?? [];
+      for (const address of [...sorted].sort((a, b) => b.elementIndex - a.elementIndex)) {
+        newElements.splice(address.elementIndex, 1);
+      }
+      const insertIndex = Math.min(...sorted.map((address) => address.elementIndex));
+      newElements.splice(insertIndex, 0, { type: "group", name: "Group", elements: groupedElements });
+      newDoc.layers![layerIndex].elements = newElements;
+      const newYaml = docToYaml(newDoc);
+      return {
+        ...state,
+        yamlText: newYaml,
+        parsedDoc: newDoc,
+        selection: [{ layerIndex, elementIndex: insertIndex }],
+        ...pushHistory(state, newYaml),
+      };
+    }
+
+    case "UNGROUP_SELECTION": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers || state.selection.length !== 1) return state;
+      const address = state.selection[0];
+      if (!isEditableAddress(doc, address)) return state;
+      const group = doc.layers[address.layerIndex]?.elements?.[address.elementIndex];
+      if (!group || !canSafelyUngroup(group) || !group.elements?.length) return state;
+
+      const newDoc = structuredClone(doc);
+      const elements = newDoc.layers![address.layerIndex].elements ?? [];
+      const children = structuredClone(group.elements);
+      elements.splice(address.elementIndex, 1, ...children);
+      newDoc.layers![address.layerIndex].elements = elements;
+      const selection = children.map((_, index) => ({ layerIndex: address.layerIndex, elementIndex: address.elementIndex + index }));
+      const newYaml = docToYaml(newDoc);
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection, ...pushHistory(state, newYaml) };
+    }
+
+    case "MOVE_SELECTION_TO_TOP_LAYER": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers || state.selection.length === 0) return state;
+      const movable = uniqueAddresses(state.selection)
+        .filter((address) => isEditableAddress(doc, address))
+        .sort((a, b) => b.layerIndex - a.layerIndex || b.elementIndex - a.elementIndex);
+      if (movable.length === 0) return state;
+
+      const newDoc = structuredClone(doc);
+      const targetLayerIndex = ensureTopInsertionLayerIndex(newDoc);
+      const moved: NpngElement[] = [];
+      for (const address of movable) {
+        const elements = newDoc.layers?.[address.layerIndex]?.elements;
+        const original = doc.layers[address.layerIndex]?.elements?.[address.elementIndex];
+        if (!elements || !original) continue;
+        elements.splice(address.elementIndex, 1);
+        moved.unshift(structuredClone(original));
+      }
+
+      if (moved.length === 0) return state;
+      const targetElements = newDoc.layers![targetLayerIndex].elements ?? [];
+      const startIndex = targetElements.length;
+      targetElements.push(...moved);
+      newDoc.layers![targetLayerIndex].elements = targetElements;
+      const selection = moved.map((_, index) => ({ layerIndex: targetLayerIndex, elementIndex: startIndex + index }));
+      const newYaml = docToYaml(newDoc);
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection, ...pushHistory(state, newYaml) };
+    }
+
     case "ADD_ELEMENT": {
       const doc = state.parsedDoc;
       if (!doc) return state;
       const newDoc = structuredClone(doc);
-      if (!newDoc.layers || newDoc.layers.length === 0) {
-        newDoc.layers = [{ name: "default", elements: [] }];
-      }
-      const li = Math.min(action.layerIndex, newDoc.layers.length - 1);
-      if (!newDoc.layers[li].elements) newDoc.layers[li].elements = [];
-      newDoc.layers[li].elements!.push(action.element);
+      const li = action.layerIndex < 0 || !newDoc.layers?.length
+        ? ensureTopInsertionLayerIndex(newDoc)
+        : getInsertionLayerIndex(newDoc, action.layerIndex);
+      if (li < 0) return state;
+      const targetElements = newDoc.layers![li].elements ?? [];
+      targetElements.push(action.element);
+      newDoc.layers![li].elements = targetElements;
       const newYaml = docToYaml(newDoc);
-      const newAddr: ElementAddress = { layerIndex: li, elementIndex: newDoc.layers[li].elements!.length - 1 };
+      const newAddr: ElementAddress = { layerIndex: li, elementIndex: targetElements.length - 1 };
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [newAddr], activeTool: "select", ...pushHistory(state, newYaml) };
     }
 
@@ -372,7 +516,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       for (const address of orderedSelection) {
         const elements = newDoc.layers?.[address.layerIndex]?.elements;
         const original = doc.layers[address.layerIndex]?.elements?.[address.elementIndex];
-        if (!elements || !original) continue;
+        if (!elements || !original || !isEditableAddress(doc, address)) continue;
 
         const duplicate = structuredClone(original);
         applyElementProps(duplicate, applyMove(duplicate, offset, offset, getOrigProps(duplicate)));
@@ -389,10 +533,26 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const doc = state.parsedDoc;
       if (!doc?.layers) return state;
       const { layerIndex, elementIndex } = action.address;
+      if (!isEditableAddress(doc, action.address)) return state;
       const newDoc = structuredClone(doc);
       newDoc.layers![layerIndex].elements!.splice(elementIndex, 1);
       const newYaml = docToYaml(newDoc);
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [], ...pushHistory(state, newYaml) };
+    }
+
+    case "TOGGLE_ELEMENT_LOCK": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers) return state;
+      const element = doc.layers[action.address.layerIndex]?.elements?.[action.address.elementIndex];
+      if (!element) return state;
+      const newDoc = structuredClone(doc);
+      const nextElement = newDoc.layers![action.address.layerIndex].elements![action.address.elementIndex];
+      nextElement.locked = !nextElement.locked;
+      const newYaml = docToYaml(newDoc);
+      const selection = nextElement.locked
+        ? state.selection.filter((selected) => !sameAddress(selected, action.address))
+        : state.selection;
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection, ...pushHistory(state, newYaml) };
     }
 
     case "SET_DRAG":
@@ -405,6 +565,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const doc = state.parsedDoc;
       if (!doc?.layers) return state;
       const { from, toIndex } = action;
+      if (!isEditableAddress(doc, from)) return state;
       const newDoc = structuredClone(doc);
       const elements = newDoc.layers![from.layerIndex].elements!;
       const [removed] = elements.splice(from.elementIndex, 1);
@@ -423,6 +584,19 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, ...pushHistory(state, newYaml) };
     }
 
+    case "TOGGLE_LAYER_LOCK": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers?.[action.layerIndex]) return state;
+      const newDoc = structuredClone(doc);
+      const layer = newDoc.layers![action.layerIndex];
+      layer.locked = !layer.locked;
+      const selection = layer.locked
+        ? state.selection.filter((address) => address.layerIndex !== action.layerIndex)
+        : state.selection;
+      const newYaml = docToYaml(newDoc);
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection, ...pushHistory(state, newYaml) };
+    }
+
     case "SET_ZOOM":
       return { ...state, zoom: Math.max(0.1, Math.min(10, action.zoom)) };
 
@@ -438,7 +612,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const newDoc = structuredClone(doc);
       if (!newDoc.layers) newDoc.layers = [];
       const layerNum = newDoc.layers.length + 1;
-      newDoc.layers.unshift({ name: `Layer ${layerNum}`, elements: [] });
+      newDoc.layers.push({ name: `Layer ${layerNum}`, elements: [] });
       const newYaml = docToYaml(newDoc);
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [], ...pushHistory(state, newYaml) };
     }
@@ -446,6 +620,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "DELETE_LAYER": {
       const doc = state.parsedDoc;
       if (!doc?.layers?.[action.layerIndex]) return state;
+      if (doc.layers[action.layerIndex].locked) return state;
       const newDoc = structuredClone(doc);
       newDoc.layers!.splice(action.layerIndex, 1);
       const newYaml = docToYaml(newDoc);
@@ -455,6 +630,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "RENAME_LAYER": {
       const doc = state.parsedDoc;
       if (!doc?.layers?.[action.layerIndex]) return state;
+      if (doc.layers[action.layerIndex].locked) return state;
       const newDoc = structuredClone(doc);
       newDoc.layers![action.layerIndex].name = action.name;
       const newYaml = docToYaml(newDoc);
@@ -466,6 +642,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       if (!doc?.layers) return state;
       const { fromIndex, toIndex } = action;
       if (fromIndex < 0 || fromIndex >= doc.layers.length || toIndex < 0 || toIndex >= doc.layers.length) return state;
+      if (doc.layers[fromIndex].locked) return state;
       const newDoc = structuredClone(doc);
       const [removed] = newDoc.layers!.splice(fromIndex, 1);
       newDoc.layers!.splice(toIndex, 0, removed);
@@ -476,6 +653,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "UPDATE_LAYER": {
       const doc = state.parsedDoc;
       if (!doc?.layers?.[action.layerIndex]) return state;
+      if (doc.layers[action.layerIndex].locked) return state;
       const newDoc = structuredClone(doc);
       const layer = newDoc.layers![action.layerIndex] as Record<string, unknown>;
       for (const [k, v] of Object.entries(action.props)) {
@@ -528,16 +706,15 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const doc = state.parsedDoc;
       if (!doc || !d) return { ...state, penState: null };
       const newDoc = structuredClone(doc);
-      if (!newDoc.layers || newDoc.layers.length === 0) {
-        newDoc.layers = [{ name: "default", elements: [] }];
-      }
-      const li = 0;
-      if (!newDoc.layers[li].elements) newDoc.layers[li].elements = [];
-      const element: NpngElement = { type: "path", d, fill: closed ? "#3498DB" : "none" };
+      const li = ensureTopInsertionLayerIndex(newDoc);
+      if (li < 0) return { ...state, penState: null };
+      const targetElements = newDoc.layers![li].elements ?? [];
+      const element: NpngElement = { type: "path", name: closed ? "Closed Path" : "Pen Path", d, fill: closed ? "#3498DB" : "none" };
       if (!closed) element.stroke = { color: "#333333", width: 2 };
-      newDoc.layers[li].elements!.push(element);
+      targetElements.push(element);
+      newDoc.layers![li].elements = targetElements;
       const newYaml = docToYaml(newDoc);
-      const newAddr: ElementAddress = { layerIndex: li, elementIndex: newDoc.layers[li].elements!.length - 1 };
+      const newAddr: ElementAddress = { layerIndex: li, elementIndex: targetElements.length - 1 };
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [newAddr], activeTool: "select", penState: null, ...pushHistory(state, newYaml) };
     }
 
@@ -564,21 +741,20 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const doc = state.parsedDoc;
       if (!doc || !d) return { ...state, polyState: null };
       const newDoc = structuredClone(doc);
-      if (!newDoc.layers || newDoc.layers.length === 0) {
-        newDoc.layers = [{ name: "default", elements: [] }];
-      }
-      const li = 0;
-      if (!newDoc.layers[li].elements) newDoc.layers[li].elements = [];
-      const element: NpngElement = { type: "path", d };
+      const li = ensureTopInsertionLayerIndex(newDoc);
+      if (li < 0) return { ...state, polyState: null };
+      const targetElements = newDoc.layers![li].elements ?? [];
+      const element: NpngElement = { type: "path", name: closed ? "Polygon" : "Polyline", d };
       if (closed) {
         element.fill = "#2ECC71";
       } else {
         element.fill = "none";
         element.stroke = { color: "#333333", width: 2 };
       }
-      newDoc.layers[li].elements!.push(element);
+      targetElements.push(element);
+      newDoc.layers![li].elements = targetElements;
       const newYaml = docToYaml(newDoc);
-      const newAddr: ElementAddress = { layerIndex: li, elementIndex: newDoc.layers[li].elements!.length - 1 };
+      const newAddr: ElementAddress = { layerIndex: li, elementIndex: targetElements.length - 1 };
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [newAddr], activeTool: "select", polyState: null, ...pushHistory(state, newYaml) };
     }
 

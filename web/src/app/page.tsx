@@ -9,6 +9,7 @@ import ChatPanel from "../components/ChatPanel";
 import CanvasPreview from "../components/CanvasPreview";
 import PropertyPanel from "../components/PropertyPanel";
 import YamlEditor from "../components/YamlEditor";
+import { preloadNpngImages, renderNpng } from "../lib/renderer";
 
 const SATISFACTION_PEACH_YAML = `npng: "0.4"
 canvas:
@@ -1287,6 +1288,7 @@ layers:
 export default function Home() {
   const [state, dispatch] = useReducer(editorReducer, DEFAULT_YAML, createInitialState);
   const [yamlOpen, setYamlOpen] = useState(true);
+  const [exportScale, setExportScale] = useState(4);
 
   const handleFitToScreen = useCallback(() => {
     const cw = state.parsedDoc?.canvas?.width ?? 600;
@@ -1305,14 +1307,31 @@ export default function Home() {
     dispatch({ type: "SET_YAML", yaml });
   }, []);
 
-  const handleExportPng = useCallback(() => {
-    const canvas = document.querySelector("canvas");
-    if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = "export.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  }, []);
+  const handleExportPng = useCallback(async () => {
+    if (!state.parsedDoc) {
+      alert("Cannot export PNG until the YAML is valid.");
+      return;
+    }
+    try {
+      await preloadNpngImages(state.parsedDoc);
+      const canvas = document.createElement("canvas");
+      renderNpng(state.parsedDoc, canvas, { pixelRatio: exportScale });
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) {
+        alert("PNG export failed.");
+        return;
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `export@${exportScale}x.png`;
+      link.href = objectUrl;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    } catch (error) {
+      console.error(error);
+      alert("PNG export failed because one or more image assets could not be rendered.");
+    }
+  }, [state.parsedDoc, exportScale]);
 
   const handleDownloadNpng = useCallback(() => {
     const blob = new Blob([state.yamlText], { type: "text/yaml" });
@@ -1337,7 +1356,7 @@ export default function Home() {
 
     dispatch({
       type: "ADD_ELEMENT",
-      layerIndex: 0,
+      layerIndex: -1,
       element: {
         type: "image",
         x: Math.round((canvasWidth - width) / 2),
@@ -1361,6 +1380,8 @@ export default function Home() {
         zoom={state.zoom}
         showGrid={state.showGrid}
         dispatch={dispatch}
+        exportScale={exportScale}
+        onExportScaleChange={setExportScale}
         onExportPng={handleExportPng}
         onDownloadNpng={handleDownloadNpng}
         onLoadExample={handleLoadExample}

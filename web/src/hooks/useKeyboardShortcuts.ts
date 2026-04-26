@@ -38,6 +38,16 @@ export function useKeyboardShortcuts(
           e.preventDefault();
           dispatch({ type: "DUPLICATE_SELECTION" });
         }
+      } else if (meta && key === "g" && !e.shiftKey) {
+        if (selection.length > 1) {
+          e.preventDefault();
+          dispatch({ type: "GROUP_SELECTION" });
+        }
+      } else if (meta && key === "g" && e.shiftKey) {
+        if (selection.length === 1) {
+          e.preventDefault();
+          dispatch({ type: "UNGROUP_SELECTION" });
+        }
       } else if (meta && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
         dispatch({ type: "SET_ZOOM", zoom: zoom * 1.2 });

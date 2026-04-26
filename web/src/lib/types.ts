@@ -57,6 +57,7 @@ export interface Constraints {
 export interface BaseElement {
   type: string;
   name?: string;
+  locked?: boolean;
   fill?: FillSpec;
   stroke?: StrokeSpec;
   transform?: TransformSpec;
@@ -109,10 +110,12 @@ export interface TextElement extends BaseElement {
   type: "text";
   x?: number;
   y?: number;
+  width?: number;
   content?: string;
   font_size?: number;
   font_family?: string;
   font_weight?: string;
+  line_height?: number;
   align?: "left" | "center" | "right";
   spans?: TextSpan[];
 }
@@ -215,6 +218,7 @@ export interface FilterSpec {
 export interface Layer {
   name?: string;
   visible?: boolean;
+  locked?: boolean;
   opacity?: number;
   blend_mode?: string;
   filters?: FilterSpec[];

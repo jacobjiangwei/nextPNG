@@ -4,10 +4,21 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import yaml from "js-yaml";
 import { renderNpng } from "../lib/renderer";
 import { hitTestAll, hitTestBox, getBoundingBox, getSelectionBoundingBox, mergeBoundingBoxes, type BoundingBox } from "../lib/hitTest";
-import { getHandles, getHandleAtPoint, cursorForHandle, applyMove, applyResize, getOrigProps } from "../lib/canvasInteraction";
+import {
+  getHandles,
+  getHandleAtPoint,
+  getRotationHandle,
+  getRotationHandleAtPoint,
+  getRotationOrigProps,
+  cursorForHandle,
+  applyMove,
+  applyResize,
+  applyRotation,
+  getOrigProps,
+} from "../lib/canvasInteraction";
 import { getElementDisplayName } from "../lib/elementLabels";
 import { generateShapeForTool } from "../lib/presetShapes";
-import { getPathControlLines, getPathHandleAtPoint, getPathHandles, isEditablePathData, updatePathHandle } from "../lib/pathEditing";
+import { deletePathAnchor, getPathControlLines, getPathHandleAtPoint, getPathHandles, insertPathAnchor, isEditablePathData, updatePathHandle } from "../lib/pathEditing";
 import type { NpngDocument, NpngElement } from "../lib/types";
 import type { ElementAddress, EditorAction, Tool, DragState, DrawState, PenState, PolyState } from "../lib/editorState";
 import type { PathHandleRef } from "../lib/pathEditing";
@@ -60,6 +71,22 @@ interface HitMenuState {
 }
 
 const DRAG_THRESHOLD = 3;
+
+function getElementResizeHandles(element: NpngElement, box: BoundingBox) {
+  const handles = getHandles(box);
+  if (element.type === "text") {
+    if (!element.width || element.width <= 0) return [];
+    return handles.filter((handle) => handle.id === "e" || handle.id === "w");
+  }
+  return handles;
+}
+
+function getElementResizeHandleAtPoint(element: NpngElement, box: BoundingBox, x: number, y: number) {
+  if (element.type === "text" && (!element.width || element.width <= 0)) return null;
+  const handle = getHandleAtPoint(box, x, y);
+  if (element.type === "text" && handle !== "e" && handle !== "w") return null;
+  return handle;
+}
 
 function normalizeBox(startX: number, startY: number, currentX: number, currentY: number): BoundingBox {
   return {
@@ -312,9 +339,10 @@ export default function CanvasPreview({
 
       if (selection.length === 1) {
         const isEditablePath = elem.type === "path" && typeof elem.d === "string" && isEditablePathData(elem.d) && !elem.transform;
+        const isRichText = elem.type === "text" && !!elem.spans?.length;
 
-        if (!isEditablePath) {
-          for (const h of getHandles(box)) {
+        if (!isEditablePath && !isRichText) {
+          for (const h of getElementResizeHandles(elem, box)) {
             ctx.fillStyle = "#fff";
             ctx.strokeStyle = "#3B82F6";
             ctx.lineWidth = 1.5;
@@ -322,6 +350,21 @@ export default function CanvasPreview({
             ctx.strokeRect(h.x, h.y, h.size, h.size);
           }
         }
+
+        const rotateHandle = getRotationHandle(box);
+        ctx.beginPath();
+        ctx.moveTo(box.x + box.width / 2, box.y);
+        ctx.lineTo(rotateHandle.x, rotateHandle.y);
+        ctx.strokeStyle = "#60A5FA";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(rotateHandle.x, rotateHandle.y, rotateHandle.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#111827";
+        ctx.strokeStyle = "#60A5FA";
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
 
         if (isEditablePath) {
           const baseD = elem.d ?? "";
@@ -376,7 +419,7 @@ export default function CanvasPreview({
             }
           }
 
-          drawBadge(ctx, "Path edit: orange bends curves; white moves points; blue fine-tunes handles", box.x, box.y - 30);
+          drawBadge(ctx, "Path edit: Shift-click orange inserts; Option-click white deletes; drag points to edit", box.x, box.y - 30);
           ctx.restore();
         }
       }
@@ -531,6 +574,16 @@ export default function CanvasPreview({
         if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
           const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(8, 14 / zoom));
           if (pathHandle) {
+            if (e.shiftKey && pathHandle.role === "segment") {
+              const d = insertPathAnchor(elem.d, pathHandle);
+              if (d !== elem.d) dispatch({ type: "UPDATE_ELEMENT", address: sel, props: { d } });
+              return;
+            }
+            if (e.altKey && pathHandle.role === "anchor") {
+              const d = deletePathAnchor(elem.d, pathHandle);
+              if (d !== elem.d) dispatch({ type: "UPDATE_ELEMENT", address: sel, props: { d } });
+              return;
+            }
             setPathDrag({
               address: sel,
               handle: pathHandle,
@@ -544,7 +597,15 @@ export default function CanvasPreview({
         }
 
         const box = getBoundingBox(elem);
-        const handle = getHandleAtPoint(box, pt.x, pt.y);
+        if (getRotationHandleAtPoint(box, pt.x, pt.y)) {
+          const untransformedBox = getBoundingBox({ ...elem, transform: undefined } as NpngElement);
+          dispatch({
+            type: "SET_DRAG",
+            dragState: { type: "rotate", startX: pt.x, startY: pt.y, origProps: getRotationOrigProps(elem, untransformedBox, pt.x, pt.y) },
+          });
+          return;
+        }
+        const handle = elem.type === "text" && elem.spans?.length ? null : getElementResizeHandleAtPoint(elem, box, pt.x, pt.y);
         if (handle) {
           dispatch({
             type: "SET_DRAG",
@@ -712,6 +773,14 @@ export default function CanvasPreview({
           previewBoxes.push(getBoundingBox(tempElem));
         }
         tempBox = mergeBoundingBoxes(previewBoxes);
+      } else if (dragState.type === "rotate") {
+        const sel = selection[0];
+        const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+        if (!elem) return;
+        const rotated = applyRotation(elem, pt.x, pt.y, dragState.origProps);
+        const tempElem = { ...elem, ...rotated } as NpngElement;
+        tempBox = getBoundingBox(tempElem);
+        previewBoxes.push(tempBox);
       } else if (dragState.handle) {
         const sel = selection[0];
         const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
@@ -779,7 +848,12 @@ export default function CanvasPreview({
         }
 
         const box = getBoundingBox(elem);
-        const handle = getHandleAtPoint(box, pt.x, pt.y);
+        if (getRotationHandleAtPoint(box, pt.x, pt.y)) {
+          const canvas = overlayRef.current ?? canvasRef.current;
+          if (canvas) canvas.style.cursor = "grab";
+          return;
+        }
+        const handle = elem.type === "text" && elem.spans?.length ? null : getElementResizeHandleAtPoint(elem, box, pt.x, pt.y);
         const canvas = overlayRef.current ?? canvasRef.current;
         if (canvas) canvas.style.cursor = handle ? cursorForHandle(handle) : "default";
       }
@@ -833,7 +907,7 @@ export default function CanvasPreview({
       const h = Math.abs(pt.y - drawState.startY);
 
       if (w > 2 || h > 2) {
-        const layerIndex = 0;
+        const layerIndex = -1;
         let element: NpngElement;
         if (drawState.tool === "rect") {
           element = { type: "rect", x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h), fill: "#3498DB" };
@@ -842,10 +916,11 @@ export default function CanvasPreview({
         } else if (drawState.tool === "line") {
           element = { type: "line", x1: Math.round(drawState.startX), y1: Math.round(drawState.startY), x2: Math.round(pt.x), y2: Math.round(pt.y), stroke: { color: "#333333", width: 2 } };
         } else if (drawState.tool === "text") {
-          element = { type: "text", x: Math.round(x), y: Math.round(y + h / 2), content: "Text", font_size: 16, fill: "#333333" };
+          element = { type: "text", x: Math.round(x), y: Math.round(y), width: Math.round(w), content: "Text", font_size: 16, line_height: 1.2, fill: "#333333" };
         } else if (drawState.tool === "star" || drawState.tool === "polygon-shape" || drawState.tool === "arrow-shape") {
           const d = generateShapeForTool(drawState.tool, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-          element = { type: "path", d, fill: "#E67E22" };
+          const name = drawState.tool === "star" ? "Star" : drawState.tool === "polygon-shape" ? "Polygon" : "Arrow";
+          element = { type: "path", name, d, fill: "#E67E22" };
         } else if (drawState.tool === "frame") {
           element = { type: "frame", x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h), fill: "#FFFFFF10", children: [] };
         } else {
@@ -881,6 +956,13 @@ export default function CanvasPreview({
           });
           if (updates.length > 0) {
             dispatch({ type: "UPDATE_ELEMENTS", updates });
+          }
+        } else if (dragState.type === "rotate") {
+          const sel = selection[0];
+          const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+          if (elem) {
+            const props = applyRotation(elem, pt.x, pt.y, dragState.origProps);
+            dispatch({ type: "UPDATE_ELEMENT", address: sel, props });
           }
         } else {
           const sel = selection[0];
