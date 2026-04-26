@@ -246,9 +246,314 @@ layers:
             fill: "#94A3B8"
 `;
 
+const FOUR_TILE_WINDOW_MARK_YAML = `npng: "0.4"
+canvas:
+  width: 800
+  height: 520
+  background: "#0B0F1A"
+layers:
+  - name: "deep background"
+    elements:
+      - type: rect
+        x: 0
+        y: 0
+        width: 800
+        height: 520
+        fill:
+          type: linear-gradient
+          x1: 0
+          y1: 0
+          x2: 800
+          y2: 520
+          stops:
+            - offset: 0
+              color: "#07111F"
+            - offset: 0.5
+              color: "#101827"
+            - offset: 1
+              color: "#05070D"
+
+  - name: "soft color glow"
+    opacity: 0.9
+    blend_mode: screen
+    filters:
+      - type: blur
+        radius: 42
+    elements:
+      - type: ellipse
+        cx: 285
+        cy: 190
+        rx: 150
+        ry: 120
+        fill:
+          type: radial-gradient
+          cx: 285
+          cy: 190
+          r: 150
+          stops:
+            - offset: 0
+              color: "#F2502265"
+            - offset: 1
+              color: "#F2502200"
+      - type: ellipse
+        cx: 455
+        cy: 190
+        rx: 150
+        ry: 120
+        fill:
+          type: radial-gradient
+          cx: 455
+          cy: 190
+          r: 150
+          stops:
+            - offset: 0
+              color: "#7FBA0065"
+            - offset: 1
+              color: "#7FBA0000"
+      - type: ellipse
+        cx: 285
+        cy: 360
+        rx: 150
+        ry: 120
+        fill:
+          type: radial-gradient
+          cx: 285
+          cy: 360
+          r: 150
+          stops:
+            - offset: 0
+              color: "#00A4EF65"
+            - offset: 1
+              color: "#00A4EF00"
+      - type: ellipse
+        cx: 455
+        cy: 360
+        rx: 150
+        ry: 120
+        fill:
+          type: radial-gradient
+          cx: 455
+          cy: 360
+          r: 150
+          stops:
+            - offset: 0
+              color: "#FFB90065"
+            - offset: 1
+              color: "#FFB90000"
+
+  - name: "mark shadow"
+    opacity: 0.7
+    filters:
+      - type: blur
+        radius: 20
+    elements:
+      - type: rect
+        x: 246
+        y: 138
+        width: 268
+        height: 268
+        rx: 10
+        ry: 10
+        fill: "#00000085"
+
+  - name: "four precise tiles"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 18
+        radius: 28
+        color: "#00000070"
+    elements:
+      - type: rect
+        x: 250
+        y: 120
+        width: 122
+        height: 122
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 250
+              y1: 120
+              x2: 372
+              y2: 242
+              stops:
+                - offset: 0
+                  color: "#FF6A3D"
+                - offset: 1
+                  color: "#F25022"
+          - fill:
+              type: radial-gradient
+              cx: 278
+              cy: 146
+              r: 100
+              stops:
+                - offset: 0
+                  color: "#FFFFFF50"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.55
+        strokes:
+          - color: "#FFFFFF35"
+            width: 1.5
+      - type: rect
+        x: 388
+        y: 120
+        width: 122
+        height: 122
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 388
+              y1: 120
+              x2: 510
+              y2: 242
+              stops:
+                - offset: 0
+                  color: "#A6E22E"
+                - offset: 1
+                  color: "#7FBA00"
+          - fill:
+              type: radial-gradient
+              cx: 416
+              cy: 146
+              r: 100
+              stops:
+                - offset: 0
+                  color: "#FFFFFF45"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.55
+        strokes:
+          - color: "#FFFFFF35"
+            width: 1.5
+      - type: rect
+        x: 250
+        y: 258
+        width: 122
+        height: 122
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 250
+              y1: 258
+              x2: 372
+              y2: 380
+              stops:
+                - offset: 0
+                  color: "#35C8FF"
+                - offset: 1
+                  color: "#00A4EF"
+          - fill:
+              type: radial-gradient
+              cx: 278
+              cy: 284
+              r: 100
+              stops:
+                - offset: 0
+                  color: "#FFFFFF45"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.55
+        strokes:
+          - color: "#FFFFFF35"
+            width: 1.5
+      - type: rect
+        x: 388
+        y: 258
+        width: 122
+        height: 122
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 388
+              y1: 258
+              x2: 510
+              y2: 380
+              stops:
+                - offset: 0
+                  color: "#FFD95A"
+                - offset: 1
+                  color: "#FFB900"
+          - fill:
+              type: radial-gradient
+              cx: 416
+              cy: 284
+              r: 100
+              stops:
+                - offset: 0
+                  color: "#FFFFFF45"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.55
+        strokes:
+          - color: "#FFFFFF35"
+            width: 1.5
+
+  - name: "crisp gutter lines"
+    opacity: 0.92
+    elements:
+      - type: rect
+        x: 372
+        y: 120
+        width: 16
+        height: 260
+        fill: "#0B0F1A"
+      - type: rect
+        x: 250
+        y: 242
+        width: 260
+        height: 16
+        fill: "#0B0F1A"
+      - type: line
+        x1: 250
+        y1: 120
+        x2: 510
+        y2: 120
+        stroke:
+          color: "#FFFFFF55"
+          width: 1
+      - type: line
+        x1: 250
+        y1: 380
+        x2: 510
+        y2: 380
+        stroke:
+          color: "#00000055"
+          width: 1
+
+  - name: "caption"
+    elements:
+      - type: text
+        x: 380
+        y: 438
+        font_size: 18
+        font_family: "sans-serif"
+        align: center
+        spans:
+          - text: "Geometric "
+            fill: "#94A3B8"
+          - text: "four-tile"
+            bold: true
+            fill: "#FFFFFF"
+          - text: " logo demo"
+            fill: "#94A3B8"
+      - type: text
+        x: 380
+        y: 466
+        content: "Precise rectangles beat hand-written curves."
+        font_size: 13
+        font_family: "sans-serif"
+        align: center
+        fill: "#64748B"
+`;
+
 const EXAMPLES = [
   {
-    name: "Original Apple Mark",
+    name: "Four Tile Window Mark",
+    yaml: FOUR_TILE_WINDOW_MARK_YAML,
+  },
+  {
+    name: "Apple Curve Stress Test",
     yaml: ORIGINAL_APPLE_MARK_YAML,
   },
   {
