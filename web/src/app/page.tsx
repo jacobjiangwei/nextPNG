@@ -386,92 +386,234 @@ layers:
         align: center
 `;
 
-const NEWPNG_SEED_MARK_YAML = `npng: "0.4"
+const PURE_APPLE_DESIGN_YAML = `npng: "0.4"
 canvas:
   width: 760
   height: 620
-  background: "#FFFFFF"
+  background: "#FFFDF8"
 layers:
-  - id: clean-background
-    name: "clean background"
+  - id: warm-background
+    name: "warm studio background"
     elements:
       - type: rect
-        id: white-canvas
-        name: White canvas
+        id: background-wash
+        name: Warm background wash
         x: 0
         y: 0
         width: 760
         height: 620
-        fill: "#FFFFFF"
+        fill:
+          type: linear-gradient
+          x1: 0
+          y1: 0
+          x2: 760
+          y2: 620
+          stops:
+            - offset: 0
+              color: "#FFFFFF"
+            - offset: 0.6
+              color: "#FFF7ED"
+            - offset: 1
+              color: "#FEE2E2"
 
-  - id: mark-shadow
-    name: "soft presentation shadow"
-    opacity: 0.18
+  - id: apple-shadow
+    name: "soft fruit shadow"
+    opacity: 0.32
+    filters:
+      - type: blur
+        radius: 22
+    elements:
+      - type: ellipse
+        id: oval-ground-shadow
+        name: Oval ground shadow
+        cx: 382
+        cy: 536
+        rx: 174
+        ry: 27
+        fill: "#7F1D1D"
+
+  - id: apple-body-glow
+    name: "apple body glow"
+    opacity: 0.34
     filters:
       - type: blur
         radius: 18
     elements:
-      - type: ellipse
-        id: base-shadow
-        name: Base shadow
-        cx: 382
-        cy: 538
-        rx: 150
-        ry: 20
-        fill: "#0F172A"
+      - type: path
+        id: red-body-glow
+        name: Red apple glow
+        d: "M 380 186 C 346 150 294 151 252 190 C 202 237 180 324 194 406 C 211 508 281 564 337 544 C 358 536 370 517 380 517 C 390 517 402 536 423 544 C 479 564 549 508 566 406 C 580 324 558 237 508 190 C 466 151 414 150 380 186 Z"
+        fill: "#DC2626"
 
-  - id: newpng-seed-mark
-    name: "NewPNG seed mark"
+  - id: apple-body
+    name: "pure apple fruit"
     filters:
       - type: drop-shadow
         dx: 0
-        dy: 16
-        radius: 28
-        color: "#02061722"
+        dy: 18
+        radius: 26
+        color: "#7F1D1D33"
     elements:
       - type: path
-        id: seed-silhouette
-        name: Single continuous seed silhouette
-        d: "M 380 84 C 303 122 242 202 218 301 C 195 395 224 494 298 548 C 342 580 418 580 462 548 C 536 494 565 395 542 301 C 518 202 457 122 380 84 Z"
-        fill: "#05070D"
+        id: apple-silhouette
+        name: Rounded apple silhouette
+        d: "M 380 186 C 346 150 294 151 252 190 C 202 237 180 324 194 406 C 211 508 281 564 337 544 C 358 536 370 517 380 517 C 390 517 402 536 423 544 C 479 564 549 508 566 406 C 580 324 558 237 508 190 C 466 151 414 150 380 186 Z"
+        fills:
+          - fill:
+              type: radial-gradient
+              cx: 286
+              cy: 254
+              r: 300
+              stops:
+                - offset: 0
+                  color: "#FB7185"
+                - offset: 0.42
+                  color: "#E11D48"
+                - offset: 0.78
+                  color: "#BE123C"
+                - offset: 1
+                  color: "#881337"
+          - fill:
+              type: radial-gradient
+              cx: 484
+              cy: 462
+              r: 240
+              stops:
+                - offset: 0
+                  color: "#7F1D1D55"
+                - offset: 1
+                  color: "#7F1D1D00"
+            opacity: 0.82
+        strokes:
+          - color: "#FFFFFF75"
+            width: 2
+          - color: "#7F1D1D"
+            width: 1.5
       - type: path
-        id: inner-n-ribbon-left
-        name: Negative N ribbon left stroke
-        d: "M 296 448 C 312 373 326 292 344 214"
+        id: top-dimple-shadow
+        name: Top dimple shadow
+        d: "M 331 180 C 354 197 367 211 380 213 C 394 211 407 197 429 180 C 420 222 403 249 380 252 C 357 249 340 222 331 180 Z"
+        fill: "#7F1D1D66"
+      - type: path
+        id: left-skin-highlight
+        name: Soft left skin highlight
+        d: "M 273 229 C 233 274 221 350 239 423 C 250 470 276 506 314 524 C 286 453 282 342 322 247 C 303 238 287 232 273 229 Z"
+        fill:
+          type: linear-gradient
+          x1: 240
+          y1: 230
+          x2: 324
+          y2: 524
+          stops:
+            - offset: 0
+              color: "#FFFFFF75"
+            - offset: 0.45
+              color: "#FFFFFF2E"
+            - offset: 1
+              color: "#FFFFFF00"
+      - type: path
+        id: lower-belly-gloss
+        name: Lower belly gloss
+        d: "M 306 501 C 347 529 413 529 456 501"
         fill: "none"
         stroke:
-          color: "#FFFFFF"
-          width: 42
+          color: "#FFFFFF42"
+          width: 6
           cap: round
-          join: round
       - type: path
-        id: inner-n-ribbon-diagonal
-        name: Negative N ribbon diagonal stroke
-        d: "M 347 214 C 379 318 421 403 474 480"
+        id: right-red-depth
+        name: Right side depth
+        d: "M 508 230 C 552 301 556 420 496 508"
         fill: "none"
         stroke:
-          color: "#FFFFFF"
-          width: 42
+          color: "#7F1D1D55"
+          width: 8
           cap: round
-          join: round
+
+  - id: stem-and-leaf
+    name: "stem and leaf"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 8
+        radius: 12
+        color: "#451A0338"
+    elements:
       - type: path
-        id: inner-n-ribbon-right
-        name: Negative N ribbon right stroke
-        d: "M 474 480 C 494 390 507 300 514 214"
+        id: brown-stem
+        name: Short curved stem
+        d: "M 375 194 C 364 149 383 104 426 77 C 441 106 428 158 394 199 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 374
+              y1: 78
+              x2: 406
+              y2: 198
+              stops:
+                - offset: 0
+                  color: "#92400E"
+                - offset: 0.48
+                  color: "#78350F"
+                - offset: 1
+                  color: "#451A03"
+          - fill:
+              type: radial-gradient
+              cx: 404
+              cy: 104
+              r: 70
+              stops:
+                - offset: 0
+                  color: "#FDE68A55"
+                - offset: 1
+                  color: "#FDE68A00"
+            opacity: 0.8
+        stroke:
+          color: "#FFFFFF66"
+          width: 1.5
+      - type: path
+        id: green-leaf
+        name: Single apple leaf
+        d: "M 411 130 C 462 79 548 75 606 132 C 554 184 469 184 411 130 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 414
+              y1: 132
+              x2: 604
+              y2: 118
+              stops:
+                - offset: 0
+                  color: "#166534"
+                - offset: 0.42
+                  color: "#22C55E"
+                - offset: 1
+                  color: "#86EFAC"
+          - fill:
+              type: radial-gradient
+              cx: 520
+              cy: 102
+              r: 110
+              stops:
+                - offset: 0
+                  color: "#FFFFFF55"
+                - offset: 0.58
+                  color: "#FFFFFF16"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.75
+        stroke:
+          color: "#14532D"
+          width: 2
+      - type: path
+        id: leaf-vein
+        name: Leaf vein
+        d: "M 436 131 C 482 122 542 118 586 130"
         fill: "none"
         stroke:
-          color: "#FFFFFF"
-          width: 42
+          color: "#DCFCE780"
+          width: 3
           cap: round
-          join: round
-      - type: ellipse
-        id: vector-node-accent
-        name: Vector node accent
-        cx: 514
-        cy: 214
-        rx: 15
-        ry: 15
-        fill: "#38BDF8"
 
 `;
 
@@ -782,8 +924,8 @@ const EXAMPLES = [
     yaml: SATISFACTION_PEACH_YAML,
   },
   {
-    name: "NewPNG Seed Mark",
-    yaml: NEWPNG_SEED_MARK_YAML,
+    name: "Pure Apple Design",
+    yaml: PURE_APPLE_DESIGN_YAML,
   },
   {
     name: "Four Tile Window Mark",

@@ -1,0 +1,317 @@
+npng: "0.4"
+canvas:
+  width: 760
+  height: 620
+  background: "#FFFDF8"
+layers:
+  - name: "clean warm backdrop"
+    elements:
+      - type: rect
+        id: backdrop-wash
+        name: Warm off-white canvas
+        x: 0
+        y: 0
+        width: 760
+        height: 620
+        fill:
+          type: linear-gradient
+          x1: 0
+          y1: 0
+          x2: 760
+          y2: 620
+          stops:
+            - offset: 0
+              color: "#FFFFFF"
+            - offset: 0.54
+              color: "#FFF8EE"
+            - offset: 1
+              color: "#FFE7E7"
+      - type: ellipse
+        id: apple-atmosphere
+        name: Subtle apple atmosphere
+        cx: 354
+        cy: 264
+        rx: 290
+        ry: 225
+        fill:
+          type: radial-gradient
+          cx: 350
+          cy: 245
+          r: 310
+          stops:
+            - offset: 0
+              color: "#FFE4E680"
+            - offset: 0.58
+              color: "#FECACA35"
+            - offset: 1
+              color: "#FECACA00"
+
+  - name: "soft ground shadow"
+    opacity: 0.38
+    filters:
+      - type: blur
+        radius: 24
+    elements:
+      - type: ellipse
+        id: apple-ground-shadow
+        name: Soft oval ground shadow
+        cx: 378
+        cy: 538
+        rx: 176
+        ry: 28
+        fill: "#7F1D1D"
+
+  - name: "red apple glow"
+    opacity: 0.34
+    filters:
+      - type: blur
+        radius: 20
+    elements:
+      - type: path
+        id: apple-outer-glow
+        name: Diffused red edge glow
+        d: "M 379 184 C 344 148 291 151 249 192 C 198 241 180 324 194 405 C 211 507 279 565 337 545 C 358 538 369 519 379 519 C 390 519 402 538 423 545 C 481 565 549 507 566 405 C 580 324 562 241 510 192 C 468 151 414 148 379 184 Z"
+        fill: "#E11D48"
+
+  - name: "pure apple fruit"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 18
+        radius: 26
+        color: "#7F1D1D38"
+    elements:
+      - type: path
+        id: apple-silhouette
+        name: Symmetric red apple body
+        d: "M 379 184 C 344 148 291 151 249 192 C 198 241 180 324 194 405 C 211 507 279 565 337 545 C 358 538 369 519 379 519 C 390 519 402 538 423 545 C 481 565 549 507 566 405 C 580 324 562 241 510 192 C 468 151 414 148 379 184 Z"
+        fills:
+          - fill:
+              type: radial-gradient
+              cx: 292
+              cy: 252
+              r: 310
+              stops:
+                - offset: 0
+                  color: "#FB7185"
+                - offset: 0.34
+                  color: "#F43F5E"
+                - offset: 0.72
+                  color: "#BE123C"
+                - offset: 1
+                  color: "#881337"
+          - fill:
+              type: radial-gradient
+              cx: 485
+              cy: 455
+              r: 245
+              stops:
+                - offset: 0
+                  color: "#7F1D1D58"
+                - offset: 1
+                  color: "#7F1D1D00"
+            opacity: 0.86
+          - fill:
+              type: radial-gradient
+              cx: 275
+              cy: 230
+              r: 120
+              stops:
+                - offset: 0
+                  color: "#FFFFFF6A"
+                - offset: 0.6
+                  color: "#FFFFFF1A"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.55
+        strokes:
+          - color: "#FFFFFF75"
+            width: 2
+          - color: "#7F1D1D"
+            width: 1.5
+      - type: path
+        id: top-dimple-shadow
+        name: Deep top dimple shadow
+        d: "M 329 181 C 352 197 367 212 379 214 C 394 212 408 197 430 181 C 422 222 404 250 379 253 C 355 250 338 222 329 181 Z"
+        fill:
+          type: linear-gradient
+          x1: 329
+          y1: 181
+          x2: 430
+          y2: 253
+          stops:
+            - offset: 0
+              color: "#64141475"
+            - offset: 1
+              color: "#7F1D1D18"
+      - type: path
+        id: left-skin-highlight
+        name: Wide natural skin highlight
+        d: "M 271 229 C 232 276 222 353 239 421 C 250 469 276 506 314 525 C 287 452 283 344 322 248 C 304 238 287 232 271 229 Z"
+        fill:
+          type: linear-gradient
+          x1: 236
+          y1: 228
+          x2: 318
+          y2: 525
+          stops:
+            - offset: 0
+              color: "#FFFFFF82"
+            - offset: 0.48
+              color: "#FFFFFF2B"
+            - offset: 1
+              color: "#FFFFFF00"
+      - type: path
+        id: crisp-left-gloss
+        name: Crisp crescent gloss
+        d: "M 286 266 C 259 315 258 386 281 443"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF70"
+          width: 7
+          cap: round
+      - type: path
+        id: lower-belly-gloss
+        name: Lower belly reflected light
+        d: "M 303 501 C 346 530 413 530 456 501"
+        fill: "none"
+        stroke:
+          color: "#FFFFFF42"
+          width: 6
+          cap: round
+      - type: path
+        id: right-rim-depth
+        name: Dark red right rim depth
+        d: "M 510 232 C 552 302 555 421 496 508"
+        fill: "none"
+        stroke:
+          color: "#7F1D1D60"
+          width: 9
+          cap: round
+      - type: ellipse
+        id: small-specular-dot
+        name: Small specular highlight
+        cx: 320
+        cy: 242
+        rx: 13
+        ry: 9
+        fill: "#FFFFFF80"
+        transform:
+          origin: [320, 242]
+          rotate: -18
+      - type: ellipse
+        id: apple-speckle-one
+        name: Tiny skin speckle one
+        cx: 452
+        cy: 314
+        rx: 3.6
+        ry: 2.8
+        fill: "#FDE68A72"
+      - type: ellipse
+        id: apple-speckle-two
+        name: Tiny skin speckle two
+        cx: 493
+        cy: 380
+        rx: 3
+        ry: 2.5
+        fill: "#FDE68A60"
+      - type: ellipse
+        id: apple-speckle-three
+        name: Tiny skin speckle three
+        cx: 338
+        cy: 430
+        rx: 2.8
+        ry: 2.4
+        fill: "#FDE68A55"
+      - type: ellipse
+        id: apple-speckle-four
+        name: Tiny skin speckle four
+        cx: 421
+        cy: 470
+        rx: 3.2
+        ry: 2.6
+        fill: "#FDE68A50"
+
+  - name: "stem and single leaf"
+    filters:
+      - type: drop-shadow
+        dx: 0
+        dy: 8
+        radius: 12
+        color: "#451A0338"
+    elements:
+      - type: path
+        id: apple-stem
+        name: Curved brown stem
+        d: "M 376 195 C 363 151 382 106 426 77 C 442 108 428 160 394 199 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 372
+              y1: 78
+              x2: 405
+              y2: 199
+              stops:
+                - offset: 0
+                  color: "#A16207"
+                - offset: 0.48
+                  color: "#78350F"
+                - offset: 1
+                  color: "#451A03"
+          - fill:
+              type: radial-gradient
+              cx: 405
+              cy: 104
+              r: 72
+              stops:
+                - offset: 0
+                  color: "#FDE68A58"
+                - offset: 1
+                  color: "#FDE68A00"
+            opacity: 0.76
+        stroke:
+          color: "#FFFFFF66"
+          width: 1.5
+      - type: path
+        id: apple-leaf
+        name: Fresh green apple leaf
+        d: "M 411 130 C 462 79 548 75 606 132 C 554 184 469 184 411 130 Z"
+        fills:
+          - fill:
+              type: linear-gradient
+              x1: 414
+              y1: 132
+              x2: 604
+              y2: 118
+              stops:
+                - offset: 0
+                  color: "#14532D"
+                - offset: 0.42
+                  color: "#22C55E"
+                - offset: 1
+                  color: "#BBF7D0"
+          - fill:
+              type: radial-gradient
+              cx: 520
+              cy: 102
+              r: 110
+              stops:
+                - offset: 0
+                  color: "#FFFFFF66"
+                - offset: 0.58
+                  color: "#FFFFFF18"
+                - offset: 1
+                  color: "#FFFFFF00"
+            opacity: 0.78
+        stroke:
+          color: "#14532D"
+          width: 2
+      - type: path
+        id: apple-leaf-vein
+        name: Leaf vein
+        d: "M 436 131 C 482 122 542 118 586 130"
+        fill: "none"
+        stroke:
+          color: "#DCFCE790"
+          width: 3
+          cap: round
