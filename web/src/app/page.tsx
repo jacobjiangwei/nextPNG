@@ -1745,6 +1745,7 @@ export function DesignStudio() {
                 <ChatPanel
                   onYamlGenerated={handleLoadExample}
                   currentYaml={state.yamlText}
+                  onOpenLayers={() => setLeftTab("layers")}
                   selectionContext={selectedElement && firstSel ? {
                     label: selectedElement.name ?? `${selectedElement.type} #${firstSel.elementIndex + 1}`,
                     element: selectedElement,

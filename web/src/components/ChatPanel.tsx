@@ -10,6 +10,7 @@ interface Message {
 interface ChatPanelProps {
   onYamlGenerated: (yaml: string) => void;
   currentYaml?: string;
+  onOpenLayers?: () => void;
   selectionContext?: {
     label: string;
     element: unknown;
@@ -208,7 +209,7 @@ function extractNpngYaml(text: string): string | null {
   return candidate;
 }
 
-export default function ChatPanel({ onYamlGenerated, currentYaml, selectionContext }: ChatPanelProps) {
+export default function ChatPanel({ onYamlGenerated, currentYaml, onOpenLayers, selectionContext }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -366,7 +367,7 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
               <>
                 <p className="font-medium text-zinc-300">AI onboarding: go out, generate, come back.</p>
                 <p className="text-zinc-500">
-                  First describe what you want. NewPNG will package your request with the generation rules so you
+                  First describe what you want. NewPNG will package your request with embedded generation rules so you
                   can paste it into ChatGPT, Claude, Gemini, or any AI tool.
                 </p>
                 <label className="block rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-2">
@@ -429,6 +430,26 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
                       {pasteStatus && <div className="mt-1 text-[11px] text-emerald-300">{pasteStatus}</div>}
                     </div>
                   </div>
+                  {onOpenLayers && (
+                    <div className="flex gap-2 border-t border-zinc-800 pt-1.5">
+                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-[10px] font-bold text-zinc-200">
+                        4
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-zinc-300">Optional: fine-tune</div>
+                        <div className="text-[11px] text-zinc-500">
+                          Open Layers, select an object, then adjust or ask AI to fix that selection.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={onOpenLayers}
+                          className="mt-2 rounded bg-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-zinc-100 hover:bg-zinc-600"
+                        >
+                          Open Layers
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {copyError && <div className="text-[11px] text-red-300">{copyError}</div>}
                 </div>
                 <p className="text-xs text-zinc-600">
