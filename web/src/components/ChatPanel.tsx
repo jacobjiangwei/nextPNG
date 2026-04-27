@@ -19,11 +19,47 @@ interface ChatPanelProps {
 const AI_GUIDE_URL = "https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md";
 const FORMAT_SPEC_URL = "https://github.com/jacobjiangwei/newPNG/blob/main/spec/npng-v3.md";
 
+function buildExternalAiPrompt(imageRequest: string) {
+  const request = imageRequest.trim() || "[describe what you want here]";
+  return `Generate an editable NewPNG image as .npng YAML.
+
+Follow this guide:
+https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md
+
+Rules:
+- Return one complete YAML document inside a \`\`\`yaml code block.
+- Use npng: "0.3".
+- Use canvas, layers, named objects, and stable kebab-case IDs.
+- Keep text as editable type: text.
+- Prefer editable shapes, paths, groups, frames, gradients, fills, strokes, and effects.
+- Do not return SVG, JSON, HTML/CSS, or a flat bitmap.
+- Do not just describe the image.
+- Make it visually polished and easy to edit in NewPNG Studio.
+
+Image request:
+${request}`;
+}
+
+function extractNpngYaml(text: string): string | null {
+  const fencedYaml = text.match(/```(?:yaml|npng)?\s*\n([\s\S]*?)\n```/);
+  const candidate = (fencedYaml?.[1] ?? text).trim();
+  if (!candidate) return null;
+  if (!/(^|\n)\s*npng\s*:/.test(candidate)) return null;
+  if (!/(^|\n)\s*canvas\s*:/.test(candidate)) return null;
+  if (!/(^|\n)\s*layers\s*:/.test(candidate)) return null;
+  return candidate;
+}
+
 export default function ChatPanel({ onYamlGenerated, currentYaml, selectionContext }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [externalImageRequest, setExternalImageRequest] = useState("");
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [pasteStatus, setPasteStatus] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const externalAiPrompt = buildExternalAiPrompt(externalImageRequest);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -80,9 +116,9 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
         }
 
         // Extract YAML from response
-        const yamlMatch = assistantText.match(/```(?:yaml|npng)?\s*\n([\s\S]*?)\n```/);
-        if (yamlMatch) {
-          onYamlGenerated(yamlMatch[1]);
+        const yaml = extractNpngYaml(assistantText);
+        if (yaml) {
+          onYamlGenerated(yaml);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -96,6 +132,40 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
     },
     [input, loading, messages, onYamlGenerated, currentYaml, selectionContext]
   );
+
+  const handleCopyPrompt = useCallback(async () => {
+    setCopyError(null);
+    if (!externalImageRequest.trim()) {
+      setCopyError("Describe what you want to generate first.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(buildExternalAiPrompt(externalImageRequest));
+      setCopiedPrompt(true);
+      window.setTimeout(() => setCopiedPrompt(false), 1800);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setCopyError(`Copy failed: ${message}`);
+    }
+  }, [externalImageRequest]);
+
+  const handlePasteGeneratedYaml = useCallback(async () => {
+    setCopyError(null);
+    setPasteStatus(null);
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const yaml = extractNpngYaml(clipboardText);
+      if (!yaml) {
+        setCopyError("Clipboard does not look like a complete npng YAML document.");
+        return;
+      }
+      onYamlGenerated(yaml);
+      setPasteStatus("Pasted into Source and updated the canvas.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setCopyError(`Paste failed: ${message}`);
+    }
+  }, [onYamlGenerated]);
 
   return (
     <div className="flex flex-col h-full bg-[#1e1e1e]">
@@ -127,30 +197,106 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
       <div className="flex-1 overflow-auto p-3 space-y-3">
         {messages.length === 0 && (
           <div className="space-y-2 text-sm">
-            <p className="text-zinc-300 font-medium">
-              {selectionContext ? "Edit the selected object with AI." : "Generate editable design source, not a flat bitmap."}
-            </p>
-            <p className="text-zinc-500">
-              {selectionContext
-                ? `Selected: ${selectionContext.label}. Ask for a local change like "make it glassy" or "turn this into a blue gradient button".`
-                : "Ask for a poster, card, icon, product mockup, or visual system. Claude returns npng YAML that stays editable and exports sharply at any scale."}
-            </p>
-            <p className="text-zinc-600 text-xs">
-              Try: &quot;Design a glassmorphism launch card for an AI design tool.&quot;
-            </p>
-            <div className="rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-2 text-xs text-zinc-500">
-              Agents should return full <span className="font-mono text-zinc-300">npng: &quot;0.3&quot;</span>{" "}
-              YAML with layers, editable text, stable IDs, and named objects.{" "}
-              <a
-                href={AI_GUIDE_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-blue-300 hover:text-blue-200"
-              >
-                Read the generation rules
-              </a>
-              .
-            </div>
+            {selectionContext ? (
+              <>
+                <p className="font-medium text-zinc-300">Edit the selected object with AI.</p>
+                <p className="text-zinc-500">
+                  Selected: {selectionContext.label}. Ask for a local change like &quot;make it glassy&quot; or
+                  &quot;turn this into a blue gradient button&quot;.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-zinc-300">AI onboarding: go out, generate, come back.</p>
+                <p className="text-zinc-500">
+                  First describe what you want. NewPNG will package your request with the generation rules so you
+                  can paste it into ChatGPT, Claude, Gemini, or any AI tool.
+                </p>
+                <label className="block rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-2">
+                  <span className="mb-1 block text-xs font-semibold text-zinc-300">What do you want to generate?</span>
+                  <textarea
+                    value={externalImageRequest}
+                    onChange={(e) => {
+                      setExternalImageRequest(e.target.value);
+                      setCopiedPrompt(false);
+                      setCopyError(null);
+                      setPasteStatus(null);
+                    }}
+                    placeholder="Example: a cute yellow duck icon, vector style, soft gradient, editable layers"
+                    className="h-20 w-full resize-none rounded border border-zinc-700 bg-zinc-950/80 p-2 text-xs leading-relaxed text-zinc-200 outline-none focus:border-blue-500"
+                  />
+                </label>
+                <div className="grid gap-1.5 rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-2 text-xs">
+                  <div className="flex gap-2">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                      1
+                    </div>
+                    <div>
+                      <div className="font-medium text-zinc-300">Copy prompt</div>
+                      <div className="text-[11px] text-zinc-500">It includes your request and the NewPNG rules.</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                      2
+                    </div>
+                    <div>
+                      <div className="font-medium text-zinc-300">Go out</div>
+                      <div className="text-[11px] text-zinc-500">Paste it into your favorite AI tool.</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                      3
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-300">Come back</div>
+                      <div className="text-[11px] text-zinc-500">
+                        Copy the AI&apos;s YAML response, then paste it here. Source updates automatically.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handlePasteGeneratedYaml}
+                        className="mt-2 rounded bg-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-zinc-100 hover:bg-zinc-600"
+                      >
+                        Paste generated YAML
+                      </button>
+                      {pasteStatus && <div className="mt-1 text-[11px] text-emerald-300">{pasteStatus}</div>}
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-blue-500/25 bg-blue-500/10 p-2 text-xs text-blue-100/90">
+                  <div className="mb-1 font-semibold text-blue-200">Prompt to copy into any AI tool</div>
+                  <textarea
+                    readOnly
+                    value={externalAiPrompt}
+                    className="h-48 w-full resize-none rounded border border-zinc-700 bg-zinc-950/80 p-2 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyPrompt}
+                      disabled={!externalImageRequest.trim()}
+                      className="rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {copiedPrompt ? "Copied" : "Copy prompt with request"}
+                    </button>
+                    <a
+                      href={AI_GUIDE_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-medium text-blue-300 hover:text-blue-200"
+                    >
+                      Full generation guide
+                    </a>
+                  </div>
+                  {copyError && <div className="mt-2 text-[11px] text-red-300">{copyError}</div>}
+                </div>
+                <p className="text-xs text-zinc-600">
+                  Short version: generate editable NewPNG source, not pixels.
+                </p>
+              </>
+            )}
           </div>
         )}
         {messages.map((msg, i) => (
