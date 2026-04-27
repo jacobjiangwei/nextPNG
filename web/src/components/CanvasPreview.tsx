@@ -19,7 +19,7 @@ import {
 import { getElementDisplayName } from "../lib/elementLabels";
 import { generateShapeForTool } from "../lib/presetShapes";
 import { calculateSmartSnap, type SmartGuide, type SmartSnapResult } from "../lib/smartGuides";
-import { addressKey, getElementAtAddress, sameAddress as treeSameAddress } from "../lib/elementTree";
+import { addressKey, compareAddressForRemoval, dropDescendantAddresses, getElementAtAddress, getParentElementList, sameAddress as treeSameAddress } from "../lib/elementTree";
 import { deletePathAnchor, getPathControlLines, getPathHandleAtPoint, getPathHandles, insertPathAnchor, isEditablePathData, updatePathHandle } from "../lib/pathEditing";
 import type { NpngDocument, NpngElement } from "../lib/types";
 import type { ElementAddress, EditorAction, Tool, DragState, DrawState, PenState, PolyState } from "../lib/editorState";
@@ -72,10 +72,30 @@ interface HitMenuState {
   append: boolean;
 }
 
-const DRAG_THRESHOLD = 3;
+interface ContextMenuState {
+  left: number;
+  top: number;
+  targetAddresses: ElementAddress[];
+}
 
-function getElementResizeHandles(element: NpngElement, box: BoundingBox) {
-  const handles = getHandles(box);
+const DRAG_THRESHOLD = 3;
+const CONTEXT_MENU_ITEM_CLASS = "flex w-full items-center justify-between px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:text-zinc-600 disabled:hover:bg-transparent";
+const MAX_PREVIEW_PIXEL_RATIO = 6;
+
+function getPreviewPixelRatio(zoom: number): number {
+  const deviceRatio = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+  return Math.min(MAX_PREVIEW_PIXEL_RATIO, Math.max(1, deviceRatio * Math.max(1, zoom)));
+}
+
+function getLogicalCanvasSize(doc: NpngDocument | null): { width: number; height: number } {
+  return {
+    width: doc?.canvas?.width ?? 800,
+    height: doc?.canvas?.height ?? 600,
+  };
+}
+
+function getElementResizeHandles(element: NpngElement, box: BoundingBox, zoom: number) {
+  const handles = getHandles(box, zoom);
   if (element.type === "text") {
     if (!element.width || element.width <= 0) return [];
     return handles.filter((handle) => handle.id === "e" || handle.id === "w");
@@ -83,9 +103,9 @@ function getElementResizeHandles(element: NpngElement, box: BoundingBox) {
   return handles;
 }
 
-function getElementResizeHandleAtPoint(element: NpngElement, box: BoundingBox, x: number, y: number) {
+function getElementResizeHandleAtPoint(element: NpngElement, box: BoundingBox, x: number, y: number, zoom: number) {
   if (element.type === "text" && (!element.width || element.width <= 0)) return null;
-  const handle = getHandleAtPoint(box, x, y);
+  const handle = getHandleAtPoint(box, x, y, zoom);
   if (element.type === "text" && handle !== "e" && handle !== "w") return null;
   return handle;
 }
@@ -109,8 +129,11 @@ function drawBadge(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   const paddingX = 6;
   const width = ctx.measureText(text).width + paddingX * 2;
   const height = 20;
-  const drawX = Math.max(4, Math.min(x, ctx.canvas.width - width - 4));
-  const drawY = Math.max(height + 4, Math.min(y, ctx.canvas.height - 4));
+  const transform = ctx.getTransform();
+  const canvasWidth = ctx.canvas.width / Math.max(0.001, Math.abs(transform.a));
+  const canvasHeight = ctx.canvas.height / Math.max(0.001, Math.abs(transform.d));
+  const drawX = Math.max(4, Math.min(x, canvasWidth - width - 4));
+  const drawY = Math.max(height + 4, Math.min(y, canvasHeight - 4));
   ctx.fillStyle = tone === "amber" ? "rgba(69, 26, 3, 0.9)" : "rgba(15, 23, 42, 0.9)";
   ctx.strokeStyle = tone === "amber" ? "rgba(251, 191, 36, 0.9)" : "rgba(96, 165, 250, 0.9)";
   ctx.lineWidth = 1;
@@ -164,6 +187,7 @@ export default function CanvasPreview({
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const [hitMenu, setHitMenu] = useState<HitMenuState | null>(null);
   const [pendingHitMenu, setPendingHitMenu] = useState<HitMenuState | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
   // Space key tracking
@@ -195,34 +219,43 @@ export default function CanvasPreview({
     try {
       const data = yaml.load(yamlText) as NpngDocument;
       if (data && typeof data === "object") {
-        renderNpng(data, canvasRef.current);
+        const { width, height } = getLogicalCanvasSize(data);
+        renderNpng(data, canvasRef.current, { pixelRatio: getPreviewPixelRatio(zoom) });
+        canvasRef.current.style.width = `${width}px`;
+        canvasRef.current.style.height = `${height}px`;
       }
     } catch { /* parse error */ }
-  }, [yamlText]);
+  }, [yamlText, zoom]);
 
   // Render selection overlay + grid + pen/poly preview
   useEffect(() => {
     const overlay = overlayRef.current;
     const main = canvasRef.current;
     if (!overlay || !main) return;
+    const { width: logicalWidth, height: logicalHeight } = getLogicalCanvasSize(parsedDoc);
+    const pixelRatio = main.width / Math.max(1, logicalWidth);
     overlay.width = main.width;
     overlay.height = main.height;
+    overlay.style.width = `${logicalWidth}px`;
+    overlay.style.height = `${logicalHeight}px`;
     const ctx = overlay.getContext("2d")!;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, overlay.width, overlay.height);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
     // Draw grid
     if (showGrid) {
       ctx.strokeStyle = "rgba(255,255,255,0.06)";
       ctx.lineWidth = 0.5;
-      for (let x = 0; x <= overlay.width; x += gridSize) {
+      for (let x = 0; x <= logicalWidth; x += gridSize) {
         if (x % 50 === 0) { ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 0.5; }
         else { ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 0.5; }
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, overlay.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, logicalHeight); ctx.stroke();
       }
-      for (let y = 0; y <= overlay.height; y += gridSize) {
+      for (let y = 0; y <= logicalHeight; y += gridSize) {
         if (y % 50 === 0) { ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 0.5; }
         else { ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 0.5; }
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(overlay.width, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logicalWidth, y); ctx.stroke();
       }
     }
 
@@ -372,7 +405,7 @@ export default function CanvasPreview({
         const isRichText = elem.type === "text" && !!elem.spans?.length;
 
         if (!isEditablePath && !isRichText) {
-          for (const h of getElementResizeHandles(elem, box)) {
+          for (const h of getElementResizeHandles(elem, box, zoom)) {
             ctx.fillStyle = "#fff";
             ctx.strokeStyle = "#3B82F6";
             ctx.lineWidth = 1.5;
@@ -381,7 +414,7 @@ export default function CanvasPreview({
           }
         }
 
-        const rotateHandle = getRotationHandle(box);
+        const rotateHandle = getRotationHandle(box, zoom);
         ctx.beginPath();
         ctx.moveTo(box.x + box.width / 2, box.y);
         ctx.lineTo(rotateHandle.x, rotateHandle.y);
@@ -461,17 +494,23 @@ export default function CanvasPreview({
       ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.width, selectionBox.height);
       drawBadge(ctx, `${selection.length} selected`, selectionBox.x, selectionBox.y - 8);
     }
-  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState, pathDrag, marquee, hoverState, activeTool, dragState]);
+  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState, pathDrag, marquee, hoverState, activeTool, dragState, zoom]);
 
   // Draw rubber-band preview for drawing tools
   useEffect(() => {
     const overlay = overlayRef.current;
     const main = canvasRef.current;
     if (!overlay || !main || !drawState) return;
+    const { width: logicalWidth, height: logicalHeight } = getLogicalCanvasSize(parsedDoc);
+    const pixelRatio = main.width / Math.max(1, logicalWidth);
     overlay.width = main.width;
     overlay.height = main.height;
+    overlay.style.width = `${logicalWidth}px`;
+    overlay.style.height = `${logicalHeight}px`;
     const ctx = overlay.getContext("2d")!;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, overlay.width, overlay.height);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
     ctx.strokeStyle = "#3B82F6";
     ctx.lineWidth = 1;
@@ -500,7 +539,7 @@ export default function CanvasPreview({
         ctx.stroke(path);
       }
     }
-  }, [drawState]);
+  }, [drawState, parsedDoc]);
 
   const getCanvasCoords = useCallback((e: React.MouseEvent | MouseEvent): { x: number; y: number } | null => {
     const canvas = canvasRef.current;
@@ -509,10 +548,11 @@ export default function CanvasPreview({
     const wrapperDiv = canvas.parentElement;
     if (!wrapperDiv) return null;
     const rect = wrapperDiv.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const { width: logicalWidth, height: logicalHeight } = getLogicalCanvasSize(parsedDoc);
+    const scaleX = logicalWidth / rect.width;
+    const scaleY = logicalHeight / rect.height;
     return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
-  }, []);
+  }, [parsedDoc]);
 
   const snapMoveDelta = useCallback((dx: number, dy: number, referenceBox: BoundingBox | null): SmartSnapResult => {
     let snappedDx = dx;
@@ -542,8 +582,20 @@ export default function CanvasPreview({
     const handler = (e: WheelEvent) => {
       e.preventDefault();
       if (e.metaKey || e.ctrlKey) {
-        const delta = -e.deltaY * 0.001;
-        const newZoom = Math.max(0.1, Math.min(10, zoom * (1 + delta)));
+        const wrapper = canvasRef.current?.parentElement;
+        const oldZoom = zoom;
+        const newZoom = Math.max(0.1, Math.min(10, zoom * Math.exp(-e.deltaY * 0.001)));
+        if (wrapper && oldZoom !== newZoom) {
+          const rect = wrapper.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const zoomRatio = newZoom / oldZoom;
+          dispatch({
+            type: "SET_PAN",
+            panX: panX + (e.clientX - centerX) * (1 - zoomRatio),
+            panY: panY + (e.clientY - centerY) * (1 - zoomRatio),
+          });
+        }
         dispatch({ type: "SET_ZOOM", zoom: newZoom });
       } else if (e.shiftKey) {
         dispatch({ type: "SET_PAN", panX: panX - e.deltaY, panY });
@@ -556,6 +608,8 @@ export default function CanvasPreview({
   }, [zoom, panX, panY, dispatch]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 2) return;
+    setContextMenu(null);
     setHitMenu(null);
     setPendingHitMenu(null);
     setHoverState(null);
@@ -628,7 +682,7 @@ export default function CanvasPreview({
         }
 
         const box = getBoundingBox(elem);
-        if (getRotationHandleAtPoint(box, pt.x, pt.y)) {
+        if (getRotationHandleAtPoint(box, pt.x, pt.y, zoom)) {
           const untransformedBox = getBoundingBox({ ...elem, transform: undefined } as NpngElement);
           dispatch({
             type: "SET_DRAG",
@@ -636,7 +690,7 @@ export default function CanvasPreview({
           });
           return;
         }
-        const handle = elem.type === "text" && elem.spans?.length ? null : getElementResizeHandleAtPoint(elem, box, pt.x, pt.y);
+        const handle = elem.type === "text" && elem.spans?.length ? null : getElementResizeHandleAtPoint(elem, box, pt.x, pt.y, zoom);
         if (handle) {
           dispatch({
             type: "SET_DRAG",
@@ -788,10 +842,16 @@ export default function CanvasPreview({
       const overlay = overlayRef.current;
       const main = canvasRef.current;
       if (!overlay || !main) return;
+      const { width: logicalWidth, height: logicalHeight } = getLogicalCanvasSize(parsedDoc);
+      const pixelRatio = main.width / Math.max(1, logicalWidth);
       overlay.width = main.width;
       overlay.height = main.height;
+      overlay.style.width = `${logicalWidth}px`;
+      overlay.style.height = `${logicalHeight}px`;
       const ctx = overlay.getContext("2d")!;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, overlay.width, overlay.height);
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
       let tempBox: BoundingBox | null = null;
       const previewBoxes: BoundingBox[] = [];
@@ -808,7 +868,7 @@ export default function CanvasPreview({
         const sel = selection[0];
         const elem = getElementAtAddress(parsedDoc, sel);
         if (!elem) return;
-        const rotated = applyRotation(elem, pt.x, pt.y, dragState.origProps);
+        const rotated = applyRotation(elem, pt.x, pt.y, dragState.origProps, e.shiftKey ? 15 : 0);
         const tempElem = { ...elem, ...rotated } as NpngElement;
         tempBox = getBoundingBox(tempElem);
         previewBoxes.push(tempBox);
@@ -838,7 +898,7 @@ export default function CanvasPreview({
         ctx.strokeRect(tempBox.x, tempBox.y, tempBox.width, tempBox.height);
         ctx.setLineDash([]);
         if (previewBoxes.length === 1) {
-          for (const h of getHandles(tempBox)) {
+          for (const h of getHandles(tempBox, zoom)) {
             ctx.fillStyle = "#fff";
             ctx.strokeStyle = "#3B82F6";
             ctx.lineWidth = 1.5;
@@ -846,7 +906,7 @@ export default function CanvasPreview({
             ctx.strokeRect(h.x, h.y, h.size, h.size);
           }
         }
-        drawSmartGuides(ctx, snapped.guides, overlay.width, overlay.height);
+        drawSmartGuides(ctx, snapped.guides, logicalWidth, logicalHeight);
         drawDimensionBadge(ctx, tempBox);
       }
       return;
@@ -880,12 +940,12 @@ export default function CanvasPreview({
         }
 
         const box = getBoundingBox(elem);
-        if (getRotationHandleAtPoint(box, pt.x, pt.y)) {
+        if (getRotationHandleAtPoint(box, pt.x, pt.y, zoom)) {
           const canvas = overlayRef.current ?? canvasRef.current;
           if (canvas) canvas.style.cursor = "grab";
           return;
         }
-        const handle = elem.type === "text" && elem.spans?.length ? null : getElementResizeHandleAtPoint(elem, box, pt.x, pt.y);
+        const handle = elem.type === "text" && elem.spans?.length ? null : getElementResizeHandleAtPoint(elem, box, pt.x, pt.y, zoom);
         const canvas = overlayRef.current ?? canvasRef.current;
         if (canvas) canvas.style.cursor = handle ? cursorForHandle(handle) : "default";
       }
@@ -993,7 +1053,7 @@ export default function CanvasPreview({
           const sel = selection[0];
           const elem = getElementAtAddress(parsedDoc, sel);
           if (elem) {
-            const props = applyRotation(elem, pt.x, pt.y, dragState.origProps);
+            const props = applyRotation(elem, pt.x, pt.y, dragState.origProps, e.shiftKey ? 15 : 0);
             dispatch({ type: "UPDATE_ELEMENT", address: sel, props });
           }
         } else {
@@ -1017,6 +1077,55 @@ export default function CanvasPreview({
     setPendingHitMenu(null);
     setHoverState(null);
   }, [dispatch]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setHitMenu(null);
+    setPendingHitMenu(null);
+    setHoverState(null);
+
+    const pt = getCanvasCoords(e);
+    if (!pt || !parsedDoc) {
+      setContextMenu(null);
+      return;
+    }
+
+    const hits = hitTestAll(parsedDoc, pt.x, pt.y);
+    let targetAddresses = selection;
+    if (hits.length > 0) {
+      const topHit = hits[0];
+      const hitSelected = selection.some((selected) => addressEquals(selected, topHit));
+      if (!hitSelected) {
+        dispatch({ type: "SELECT", address: topHit });
+        targetAddresses = [topHit];
+      }
+    }
+
+    const normalizedTargets = dropDescendantAddresses(targetAddresses);
+    if (normalizedTargets.length === 0) {
+      setContextMenu(null);
+      return;
+    }
+
+    setContextMenu({
+      ...getMenuPosition(e),
+      targetAddresses: normalizedTargets,
+    });
+  }, [dispatch, getCanvasCoords, getMenuPosition, parsedDoc, selection]);
+
+  const deleteContextSelection = useCallback((addresses: ElementAddress[]) => {
+    const sorted = dropDescendantAddresses(addresses).sort(compareAddressForRemoval);
+    for (const address of sorted) {
+      dispatch({ type: "DELETE_ELEMENT", address });
+    }
+    setContextMenu(null);
+  }, [dispatch]);
+
+  const contextAddresses = contextMenu?.targetAddresses ?? [];
+  const contextSingleAddress = contextAddresses.length === 1 ? contextAddresses[0] : null;
+  const contextParent = contextSingleAddress && parsedDoc
+    ? getParentElementList(parsedDoc, contextSingleAddress)
+    : null;
 
   return (
     <div
@@ -1043,6 +1152,7 @@ export default function CanvasPreview({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onDoubleClick={handleDoubleClick}
+          onContextMenu={handleContextMenu}
           onMouseLeave={() => setHoverState(null)}
         />
       </div>
@@ -1077,6 +1187,97 @@ export default function CanvasPreview({
           <div className="px-2.5 py-1.5 border-t border-zinc-800 text-[11px] text-zinc-500">
             Shift/Cmd/Ctrl-click canvas to add/remove selection.
           </div>
+        </div>
+      )}
+      {contextMenu && (
+        <div
+          className="absolute z-30 w-52 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950/95 py-1 shadow-xl shadow-black/40 backdrop-blur-sm"
+          style={{ left: contextMenu.left, top: contextMenu.top }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            onClick={() => { dispatch({ type: "DUPLICATE_SELECTION" }); setContextMenu(null); }}
+          >
+            <span>Duplicate</span>
+            <span className="text-[10px] text-zinc-500">⌘D</span>
+          </button>
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            disabled={contextAddresses.length < 2}
+            onClick={() => { dispatch({ type: "GROUP_SELECTION" }); setContextMenu(null); }}
+          >
+            <span>Group selection</span>
+            <span className="text-[10px] text-zinc-500">⌘G</span>
+          </button>
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            disabled={contextAddresses.length !== 1}
+            onClick={() => { dispatch({ type: "UNGROUP_SELECTION" }); setContextMenu(null); }}
+          >
+            <span>Ungroup</span>
+            <span className="text-[10px] text-zinc-500">⇧⌘G</span>
+          </button>
+          <div className="my-1 border-t border-zinc-800" />
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            disabled={!contextParent || contextParent.index >= contextParent.list.length - 1}
+            onClick={() => {
+              if (contextSingleAddress && contextParent) {
+                dispatch({ type: "REORDER_ELEMENT", from: contextSingleAddress, toIndex: contextParent.index + 1 });
+              }
+              setContextMenu(null);
+            }}
+          >
+            <span>Bring forward</span>
+            <span className="text-[10px] text-zinc-500">⌘]</span>
+          </button>
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            disabled={!contextParent || contextParent.index <= 0}
+            onClick={() => {
+              if (contextSingleAddress && contextParent) {
+                dispatch({ type: "REORDER_ELEMENT", from: contextSingleAddress, toIndex: contextParent.index - 1 });
+              }
+              setContextMenu(null);
+            }}
+          >
+            <span>Send backward</span>
+            <span className="text-[10px] text-zinc-500">⌘[</span>
+          </button>
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            onClick={() => { dispatch({ type: "MOVE_SELECTION_TO_TOP_LAYER" }); setContextMenu(null); }}
+          >
+            <span>Move to top layer</span>
+          </button>
+          <div className="my-1 border-t border-zinc-800" />
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            onClick={() => {
+              for (const address of contextAddresses) dispatch({ type: "TOGGLE_ELEMENT_VISIBILITY", address });
+              setContextMenu(null);
+            }}
+          >
+            <span>Toggle visibility</span>
+          </button>
+          <button
+            className={CONTEXT_MENU_ITEM_CLASS}
+            onClick={() => {
+              for (const address of contextAddresses) dispatch({ type: "TOGGLE_ELEMENT_LOCK", address });
+              setContextMenu(null);
+            }}
+          >
+            <span>Toggle lock</span>
+          </button>
+          <button
+            className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs text-red-300 hover:bg-red-500/10"
+            onClick={() => deleteContextSelection(contextAddresses)}
+          >
+            <span>Delete</span>
+            <span className="text-[10px] text-red-300/60">⌫</span>
+          </button>
         </div>
       )}
       {/* Zoom indicator */}

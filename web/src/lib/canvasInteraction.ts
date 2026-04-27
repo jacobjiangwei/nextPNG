@@ -32,9 +32,13 @@ const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_OFFSET = 28;
 const ROTATION_HANDLE_RADIUS = 6;
 
-export function getHandles(box: BoundingBox): HandleRect[] {
+function viewportScaled(value: number, viewportScale = 1): number {
+  return value / Math.max(0.1, viewportScale);
+}
+
+export function getHandles(box: BoundingBox, viewportScale = 1): HandleRect[] {
   const { x, y, width: w, height: h } = box;
-  const s = HANDLE_SIZE;
+  const s = viewportScaled(HANDLE_SIZE, viewportScale);
   const hs = s / 2;
   return [
     { id: "nw", x: x - hs, y: y - hs, size: s },
@@ -48,8 +52,8 @@ export function getHandles(box: BoundingBox): HandleRect[] {
   ];
 }
 
-export function getHandleAtPoint(box: BoundingBox, px: number, py: number): HandleId | null {
-  for (const h of getHandles(box)) {
+export function getHandleAtPoint(box: BoundingBox, px: number, py: number, viewportScale = 1): HandleId | null {
+  for (const h of getHandles(box, viewportScale)) {
     if (px >= h.x && px <= h.x + h.size && py >= h.y && py <= h.y + h.size) {
       return h.id;
     }
@@ -57,17 +61,17 @@ export function getHandleAtPoint(box: BoundingBox, px: number, py: number): Hand
   return null;
 }
 
-export function getRotationHandle(box: BoundingBox): { x: number; y: number; radius: number } {
+export function getRotationHandle(box: BoundingBox, viewportScale = 1): { x: number; y: number; radius: number } {
   return {
     x: box.x + box.width / 2,
-    y: box.y - ROTATION_HANDLE_OFFSET,
-    radius: ROTATION_HANDLE_RADIUS,
+    y: box.y - viewportScaled(ROTATION_HANDLE_OFFSET, viewportScale),
+    radius: viewportScaled(ROTATION_HANDLE_RADIUS, viewportScale),
   };
 }
 
-export function getRotationHandleAtPoint(box: BoundingBox, px: number, py: number): boolean {
-  const handle = getRotationHandle(box);
-  return Math.hypot(px - handle.x, py - handle.y) <= handle.radius + 4;
+export function getRotationHandleAtPoint(box: BoundingBox, px: number, py: number, viewportScale = 1): boolean {
+  const handle = getRotationHandle(box, viewportScale);
+  return Math.hypot(px - handle.x, py - handle.y) <= handle.radius + viewportScaled(4, viewportScale);
 }
 
 export function cursorForHandle(handle: HandleId | null): string {
@@ -131,14 +135,17 @@ export function getRotationOrigProps(
   };
 }
 
-export function applyRotation(element: NpngElement, x: number, y: number, origProps: Record<string, number>): Record<string, unknown> {
+export function applyRotation(element: NpngElement, x: number, y: number, origProps: Record<string, number>, snapDegrees = 0): Record<string, unknown> {
   const originX = origProps.originX ?? 0;
   const originY = origProps.originY ?? 0;
   const visualOriginX = origProps.visualOriginX ?? originX;
   const visualOriginY = origProps.visualOriginY ?? originY;
   const startAngle = origProps.startAngle ?? 0;
   const initialRotate = origProps.rotate ?? 0;
-  const nextRotate = roundCoord(initialRotate + angleDegrees(visualOriginX, visualOriginY, x, y) - startAngle);
+  let nextRotate = roundCoord(initialRotate + angleDegrees(visualOriginX, visualOriginY, x, y) - startAngle);
+  if (snapDegrees > 0) {
+    nextRotate = roundCoord(Math.round(nextRotate / snapDegrees) * snapDegrees);
+  }
   if (origProps.preserveMissingOrigin) {
     const transform: TransformSpec = {
       ...element.transform,

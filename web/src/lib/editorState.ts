@@ -1,7 +1,7 @@
 import yaml from "js-yaml";
 import { applyMove, getOrigProps } from "./canvasInteraction";
 import { getBoundingBox, mergeBoundingBoxes } from "./hitTest";
-import { collectElementAddresses, compareAddressForRemoval, dropDescendantAddresses, getElementAtAddress, getParentElementList, isEditableAddress, isTopLevelAddress, parentPath, sameAddress } from "./elementTree";
+import { collectElementAddresses, compareAddressForRemoval, dropDescendantAddresses, getElementAtAddress, getParentElementList, isEditableAddress, isTopLevelAddress, makeAddress, parentPath, sameAddress } from "./elementTree";
 import type { GroupElement, NpngDocument, NpngElement } from "./types";
 
 export type Tool = "select" | "rect" | "ellipse" | "line" | "text"
@@ -95,6 +95,7 @@ export type EditorAction =
   | { type: "CREATE_COMPONENT_FROM_SELECTION" }
   | { type: "INSERT_COMPONENT_INSTANCE"; componentId: string }
   | { type: "DELETE_ELEMENT"; address: ElementAddress }
+  | { type: "RENAME_ELEMENT"; address: ElementAddress; name: string }
   | { type: "TOGGLE_ELEMENT_VISIBILITY"; address: ElementAddress }
   | { type: "TOGGLE_ELEMENT_LOCK"; address: ElementAddress }
   | { type: "SET_DRAG"; dragState: DragState | null }
@@ -656,6 +657,20 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [], ...pushHistory(state, newYaml) };
     }
 
+    case "RENAME_ELEMENT": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers) return state;
+      if (!isEditableAddress(doc, action.address)) return state;
+      const newDoc = structuredClone(doc);
+      const element = getElementAtAddress(newDoc, action.address);
+      if (!element) return state;
+      const nextName = action.name.trim();
+      if (nextName) element.name = nextName;
+      else delete element.name;
+      const newYaml = docToYaml(newDoc);
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, ...pushHistory(state, newYaml) };
+    }
+
     case "TOGGLE_ELEMENT_VISIBILITY": {
       const doc = state.parsedDoc;
       if (!doc?.layers) return state;
@@ -700,13 +715,15 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       if (!doc?.layers) return state;
       const { from, toIndex } = action;
       if (!isEditableAddress(doc, from)) return state;
-      if (!isTopLevelAddress(from)) return state;
       const newDoc = structuredClone(doc);
-      const elements = newDoc.layers![from.layerIndex].elements!;
-      const [removed] = elements.splice(from.elementIndex, 1);
-      elements.splice(toIndex, 0, removed);
+      const parent = getParentElementList(newDoc, from);
+      if (!parent || parent.index < 0 || parent.index >= parent.list.length) return state;
+      const clampedToIndex = Math.max(0, Math.min(toIndex, parent.list.length - 1));
+      if (parent.index === clampedToIndex) return state;
+      const [removed] = parent.list.splice(parent.index, 1);
+      parent.list.splice(clampedToIndex, 0, removed);
       const newYaml = docToYaml(newDoc);
-      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [{ layerIndex: from.layerIndex, elementIndex: toIndex, path: [toIndex] }], ...pushHistory(state, newYaml) };
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [makeAddress(from.layerIndex, [...parentPath(from), clampedToIndex])], ...pushHistory(state, newYaml) };
     }
 
     case "TOGGLE_LAYER_VISIBILITY": {

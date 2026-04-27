@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import type { EditorAction, ElementAddress } from "../lib/editorState";
 import type { NpngDocument } from "../lib/types";
 import { applyMove, getOrigProps } from "../lib/canvasInteraction";
-import { compareAddressForRemoval, dropDescendantAddresses, getElementAtAddress } from "../lib/elementTree";
+import { compareAddressForRemoval, dropDescendantAddresses, getElementAtAddress, getParentElementList } from "../lib/elementTree";
 
 export function useKeyboardShortcuts(
   dispatch: React.Dispatch<EditorAction>,
@@ -63,6 +63,15 @@ export function useKeyboardShortcuts(
       } else if (meta && e.key === "'") {
         e.preventDefault();
         dispatch({ type: "TOGGLE_GRID" });
+      } else if (meta && (e.code === "BracketLeft" || e.code === "BracketRight") && selection.length === 1 && parsedDoc?.layers) {
+        const parent = getParentElementList(parsedDoc, selection[0]);
+        if (parent) {
+          e.preventDefault();
+          const toIndex = e.code === "BracketRight"
+            ? (e.shiftKey ? parent.list.length - 1 : parent.index + 1)
+            : (e.shiftKey ? 0 : parent.index - 1);
+          dispatch({ type: "REORDER_ELEMENT", from: selection[0], toIndex });
+        }
       } else if (e.key === "Backspace" || e.key === "Delete") {
         if (selection.length > 0) {
           e.preventDefault();
@@ -75,6 +84,29 @@ export function useKeyboardShortcuts(
       } else if (e.key === "Escape") {
         dispatch({ type: "SELECT", address: null });
         dispatch({ type: "SET_TOOL", tool: "select" });
+      } else if (!meta && !e.altKey && !e.shiftKey && ["v", "r", "o", "l", "t", "p", "f"].includes(key)) {
+        if (key === "v") {
+          e.preventDefault();
+          dispatch({ type: "SET_TOOL", tool: "select" });
+        } else if (key === "r") {
+          e.preventDefault();
+          dispatch({ type: "SET_TOOL", tool: "rect" });
+        } else if (key === "o") {
+          e.preventDefault();
+          dispatch({ type: "SET_TOOL", tool: "ellipse" });
+        } else if (key === "l") {
+          e.preventDefault();
+          dispatch({ type: "SET_TOOL", tool: "line" });
+        } else if (key === "t") {
+          e.preventDefault();
+          dispatch({ type: "SET_TOOL", tool: "text" });
+        } else if (key === "p") {
+          e.preventDefault();
+          dispatch({ type: "SET_TOOL", tool: "pen" });
+        } else if (key === "f") {
+          e.preventDefault();
+          dispatch({ type: "SET_TOOL", tool: "frame" });
+        }
       } else if (selection.length > 0 && parsedDoc?.layers) {
         // Arrow key nudging — nudge all selected
         const delta = e.shiftKey ? 10 : 1;
