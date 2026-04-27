@@ -1482,7 +1482,6 @@ export function DesignStudio() {
         examples={EXAMPLES}
         canUndo={state.historyIndex > 0}
         canRedo={state.historyIndex < state.history.length - 1}
-        showExportControls={false}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Left workspace panel: AI / Layers / Source */}
@@ -1601,36 +1600,6 @@ export function DesignStudio() {
             />
           </div>
 
-          <div className="border-t border-zinc-700/80 p-3">
-            <div className="mb-2 flex items-center justify-between text-xs">
-              <span className="font-semibold text-zinc-200">Export</span>
-              <span className="text-zinc-500">PNG / Source</span>
-            </div>
-            <div className="mb-2 grid grid-cols-[1fr_1.2fr] gap-2">
-              <select
-                value={exportScale}
-                onChange={(e) => setExportScale(Number(e.target.value))}
-                className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-300"
-                title="PNG export scale"
-              >
-                <option value={1}>1x</option>
-                <option value={2}>2x</option>
-                <option value={4}>4x</option>
-              </select>
-              <button
-                onClick={handleExportPng}
-                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
-              >
-                Export PNG
-              </button>
-            </div>
-            <button
-              onClick={handleDownloadNpng}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              Download npng source
-            </button>
-          </div>
         </aside>
       </div>
     </div>

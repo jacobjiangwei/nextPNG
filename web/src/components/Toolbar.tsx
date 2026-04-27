@@ -202,15 +202,15 @@ export default function Toolbar({
         <>
           <button
             onClick={onExportPng}
-            className="px-3 py-1 text-xs bg-zinc-700 rounded hover:bg-zinc-600 text-zinc-300"
+            className="px-3 py-1.5 text-xs bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold shadow-sm"
             title={`Export a ${exportScale}x PNG`}
           >
-            Export PNG
+            Export
           </button>
           <select
             value={exportScale}
             onChange={(e) => onExportScaleChange(Number(e.target.value))}
-            className="px-2 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded text-zinc-300"
+            className="px-2 py-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-md text-zinc-300"
             title="PNG export scale"
           >
             <option value={1}>1x</option>
@@ -219,9 +219,9 @@ export default function Toolbar({
           </select>
           <button
             onClick={onDownloadNpng}
-            className="px-3 py-1 text-xs bg-zinc-700 rounded hover:bg-zinc-600 text-zinc-300"
+            className="px-3 py-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-md hover:bg-zinc-700 text-zinc-300"
           >
-            Download source
+            Source
           </button>
         </>
       )}
