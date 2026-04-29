@@ -153,3 +153,73 @@ The renderer (`web/src/lib/renderer.ts`) supports all v0.3/v0.4 features includi
 3. **LLMs can't write complex bezier paths** — guide AI to use simple shapes + boolean operations
 4. **Bidirectional sync** — YAML changes update canvas, and (future) canvas edits update YAML
 5. **Don't over-engineer** — MVP first, iterate incrementally
+
+---
+
+## Competitive Analysis & Strategic Positioning
+
+### 我们是谁
+
+nextPNG 的核心是 **推广 npng 格式** —— 一个 AI 原生的开放矢量图形格式。
+Web Studio (nextpng.org) 是格式的展示窗口和参考实现，而非一个要烧钱提供 AI 服务的 SaaS 产品。
+
+**商业逻辑**：npng 格式被广泛采纳 → 生态工具围绕格式生长 → nextPNG 作为格式定义者占据标准制定权。
+类比：Markdown 之于 Typora/Obsidian，SVG 之于浏览器，OpenAPI 之于 Swagger。
+
+### 格式推广战略（核心使命）
+
+| 战略方向 | 具体做法 |
+|----------|----------|
+| **让 AI 工具原生输出 npng** | 提供 system prompt、few-shot examples，让 ChatGPT/Claude/Gemini 等 AI 都能直接生成 npng |
+| **让设计工具能读写 npng** | 提供 Figma 插件、VS Code 扩展、命令行工具，降低接入成本 |
+| **让开发者能渲染 npng** | 提供 JS/Python/Go 渲染库，像渲染 Markdown 一样简单 |
+| **让 Web Studio 成为最佳体验** | nextpng.org 作为"npng 格式长什么样"的活广告，零门槛体验 |
+| **格式规范公开透明** | spec/ 目录是开放标准，欢迎社区参与演进 |
+
+### 核心竞品对比（格式/标准层面）
+
+| 格式/工具 | 可读性 | AI友好 | 可编辑结构 | 矢量 | 图层/语义 | 生态开放 |
+|-----------|--------|--------|------------|------|-----------|----------|
+| **npng (我们)** | ✅ YAML纯文本 | ✅ 专为LLM设计 | ✅ 图层+样式+组件 | ✅ | ✅ | ✅ 开放spec |
+| **SVG** | ⚠️ XML冗长 | ⚠️ LLM写不好复杂路径 | ⚠️ 扁平无图层 | ✅ | ❌ | ✅ W3C标准 |
+| **Figma格式** | ❌ 私有二进制 | ❌ | ✅ 有结构 | ✅ | ✅ | ❌ 封闭 |
+| **PSD/AI** | ❌ 二进制 | ❌ | ✅ | ✅ | ✅ | ❌ Adobe私有 |
+| **Midjourney输出** | ❌ 像素PNG | ❌ | ❌ 不可编辑 | ❌ | ❌ | ❌ |
+| **Canva格式** | ❌ 私有 | ❌ | ⚠️ 模板受限 | ⚠️ | ⚠️ | ❌ |
+
+### npng 格式的差异化优势
+
+1. **人类可读可写** — YAML 格式，任何文本编辑器都能打开、修改、diff
+2. **AI 原生** — 专门为 LLM 生成设计，简单几何+组合，不需要手写贝塞尔
+3. **结构化** — 图层、组件、样式、defs/use，不是扁平元素堆砌
+4. **轻量渲染** — 任何支持 Canvas 2D 的环境都能渲染，无需重型引擎
+5. **版本控制友好** — 像代码一样 git diff、merge、review
+6. **跨平台** — 不绑定任何工具或平台，任何人都可以写渲染器
+
+### 与竞品的关键差距（格式推广视角）
+
+#### 🔴 紧急（格式采纳的前提）
+1. **SVG 双向转换** — npng↔SVG 互转工具。用户现有资产是 SVG，必须能导入；输出也要能导出 SVG 给下游使用。
+2. **渲染器多语言实现** — 目前只有 JS (Canvas 2D)。需要 Python、Go、Swift 渲染器让更多生态接入。
+3. **格式规范完善** — spec 要更完整、更严谨，像 W3C 标准那样可以让第三方独立实现。
+4. **AI 生成 prompt 库** — 公开一套高质量 system prompt + few-shot，让任何 AI 工具都能输出 npng。
+
+#### 🟡 重要（扩大格式生态）
+5. **Figma 插件** — 在 Figma 里一键导出 npng，或从 npng 导入。桥接现有设计师群体。
+6. **VS Code 扩展完善** — 语法高亮、实时预览、schema 校验。让开发者把 npng 当 Markdown 用。
+7. **CLI 工具** — `npng render input.npng -o output.png`，集成到 CI/CD 和自动化流水线。
+8. **模板/示例库扩充** — examples/ 目录要覆盖 logo、icon、poster、card 等主流场景，成为学习 npng 的入口。
+9. **npm/pip 包发布** — 把渲染器作为独立库发布，`npm install npng-renderer`。
+
+#### 🟢 差异化机会
+10. **npng 作为 AI agent 间的设计协议** — agent A 生成 npng，agent B 修改，agent C 渲染。像 JSON 一样成为数据交换格式。
+11. **设计稿 diff 可视化** — 格式天生支持 diff，做一个可视化 diff 工具就是杀手级功能。
+12. **社区贡献标准流程** — 开放 RFC 流程让社区参与格式演进，类似 TC39/W3C。
+
+### 开发策略
+
+1. **格式推广 > 产品功能** — Web Studio 是展示窗口，不是烧钱的 SaaS。不要在 AI 服务上重投入。
+2. **降低接入成本** — 让别人用 npng 的门槛越低越好：好文档、好工具、好示例。
+3. **AI 服务由用户自带 key** — 不提供免费 AI 服务，用户用自己的 API key 或本地模型。
+4. **格式先行** — 任何新功能先问"这是否让 npng 格式更有吸引力？"
+5. **生态思维** — 我们不需要做所有工具，只需要让别人能轻松基于 npng 构建工具。
