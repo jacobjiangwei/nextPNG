@@ -16,8 +16,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "nextPNG - Text-to-Design Studio",
-  description: "AI-native text-to-design editor for editable, lossless, Figma-like vector graphics.",
+  title: "nextPNG - AI-Native Vector Design Studio",
+  description: "Design logos, icons, posters and graphics with AI. Open npng format — editable, diffable, version-controllable vector design files.",
+  metadataBase: new URL("https://nextpng.org"),
+  openGraph: {
+    title: "nextPNG - AI-Native Vector Design Studio",
+    description: "Design logos, icons, posters and graphics with AI. Open npng format — editable YAML vector graphics.",
+    url: "https://nextpng.org",
+    siteName: "nextPNG",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "nextPNG - AI-Native Vector Design Studio",
+    description: "Design logos, icons, posters and graphics with AI. Open npng format — editable YAML vector graphics.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: "https://nextpng.org",
+  },
+  keywords: ["AI design", "vector graphics", "logo maker", "icon design", "npng format", "text to design", "AI native", "YAML graphics"],
 };
 
 export default function RootLayout({

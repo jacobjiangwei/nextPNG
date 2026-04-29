@@ -11,6 +11,8 @@ interface ToolbarProps {
   exportScale: number;
   onExportScaleChange: (scale: number) => void;
   onExportPng: () => void;
+  onExportSvg: () => void;
+  onExportPdf: () => void;
   onDownloadNpng: () => void;
   onLoadExample: (yaml: string) => void;
   onFitToScreen: () => void;
@@ -40,7 +42,7 @@ const SHAPE_TOOLS: { id: Tool; label: string }[] = [
 ];
 
 export default function Toolbar({
-  activeTool, zoom, showGrid, dispatch, exportScale, onExportScaleChange, onExportPng, onDownloadNpng, onLoadExample, onFitToScreen, onImageUpload, examples, canUndo, canRedo,
+  activeTool, zoom, showGrid, dispatch, exportScale, onExportScaleChange, onExportPng, onExportSvg, onExportPdf, onDownloadNpng, onLoadExample, onFitToScreen, onImageUpload, examples, canUndo, canRedo,
   showExportControls = true,
 }: ToolbarProps) {
   const [shapesOpen, setShapesOpen] = useState(false);
@@ -205,7 +207,21 @@ export default function Toolbar({
             className="px-3 py-1.5 text-xs bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold shadow-sm"
             title={`Export a ${exportScale}x PNG`}
           >
-            Export
+            PNG
+          </button>
+          <button
+            onClick={onExportSvg}
+            className="px-3 py-1.5 text-xs bg-emerald-600 rounded-md hover:bg-emerald-500 text-white font-semibold shadow-sm"
+            title="Export SVG"
+          >
+            SVG
+          </button>
+          <button
+            onClick={onExportPdf}
+            className="px-3 py-1.5 text-xs bg-orange-600 rounded-md hover:bg-orange-500 text-white font-semibold shadow-sm"
+            title="Export PDF"
+          >
+            PDF
           </button>
           <select
             value={exportScale}

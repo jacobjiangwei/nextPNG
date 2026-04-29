@@ -425,7 +425,7 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
           <NumberInput label="Para" value={e.paragraph_spacing ?? 0} onChange={v => update({ paragraph_spacing: v || null })} />
           <SelectInput label="Align" value={e.align ?? "left"} options={["left", "center", "right"]} onChange={v => update({ align: v })} />
           <SelectInput label="V Align" value={e.vertical_align ?? "top"} options={["top", "center", "bottom"]} onChange={v => update({ vertical_align: v })} />
-          <SelectInput label="Weight" value={e.font_weight ?? "normal"} options={["normal", "bold"]} onChange={v => update({ font_weight: v })} />
+          <SelectInput label="Weight" value={e.font_weight ?? "normal"} options={["100", "200", "300", "normal", "500", "600", "bold", "800", "900"]} onChange={v => update({ font_weight: v })} />
         </Section>
       )}
 

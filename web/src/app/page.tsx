@@ -12,6 +12,7 @@ import PropertyPanel from "../components/PropertyPanel";
 import YamlEditor from "../components/YamlEditor";
 import ProjectPanel from "../components/ProjectPanel";
 import { preloadNpngImages, renderNpng } from "../lib/renderer";
+import { npngToSvg } from "../lib/svgExporter";
 import { getElementAtAddress } from "../lib/elementTree";
 import { decodeNpngShare, encodeNpngShare, readNpngSharePayload } from "../lib/npngShare";
 import {
@@ -1264,18 +1265,39 @@ layers:
 function LandingPage() {
   const valueCards = [
     {
-      title: "AI output stays editable",
-      body: "Most AI image tools stop at a bitmap. nextPNG keeps layers, text, paths, and styles as design source you can tweak.",
+      title: "AI generates editable source",
+      body: "Unlike Midjourney or DALL-E that output frozen bitmaps, nextPNG generates structured vector files with layers, text, and styles you can edit.",
     },
     {
-      title: "Figma-like, not flat",
-      body: "Layers, shapes, paths, text boxes, groups, styles, and effects remain editable after AI generation.",
+      title: "Open npng format",
+      body: "YAML-based, human-readable, git-diffable. Like Markdown for design — not locked into any proprietary tool.",
     },
     {
-      title: "Lossless by default",
-      body: "Render from vector source at preview size, 4x PNG, or future device-specific resolutions without blur.",
+      title: "Lossless at any size",
+      body: "Vector source renders sharply at 1x, 4x, or any DPI. Perfect for logos, icons, and print-ready graphics.",
     },
   ];
+
+  const comparisonRows = [
+    { feature: "AI generates", us: true, figma: false, midjourney: true, canva: "partial" },
+    { feature: "Editable layers", us: true, figma: true, midjourney: false, canva: "partial" },
+    { feature: "Open format", us: true, figma: false, midjourney: false, canva: false },
+    { feature: "Vector/lossless", us: true, figma: true, midjourney: false, canva: "partial" },
+    { feature: "Version-controllable", us: true, figma: false, midjourney: false, canva: false },
+    { feature: "Self-hostable", us: true, figma: false, midjourney: false, canva: false },
+  ];
+
+  const useCases = [
+    { emoji: "🎨", label: "Logos", desc: "Brand marks and wordmarks" },
+    { emoji: "✨", label: "Icons", desc: "UI icons and icon sets" },
+    { emoji: "📐", label: "Posters", desc: "Event and marketing posters" },
+    { emoji: "💳", label: "Cards", desc: "Business and product cards" },
+    { emoji: "🏷️", label: "Badges", desc: "Labels, tags, and badges" },
+    { emoji: "📊", label: "Infographics", desc: "Data visualization graphics" },
+  ];
+
+  const checkMark = (v: boolean | string) =>
+    v === true ? "✅" : v === "partial" ? "⚠️" : "❌";
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#07090f] text-zinc-100">
@@ -1284,9 +1306,17 @@ function LandingPage() {
         <header className="flex items-center justify-between">
           <div>
             <div className="text-lg font-bold tracking-[0.22em]">nextPNG</div>
-            <div className="text-[11px] uppercase tracking-[0.28em] text-blue-300/80">AI-native text-to-design</div>
+            <div className="text-[11px] uppercase tracking-[0.28em] text-blue-300/80">AI-native vector design</div>
           </div>
           <div className="flex items-center gap-2">
+            <a
+              href="https://github.com/jacobjiangwei/nextPNG"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+            >
+              GitHub
+            </a>
             <Link
               href="/viewer"
               className="rounded-full border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm text-zinc-300 transition hover:border-blue-400 hover:text-white"
@@ -1302,39 +1332,44 @@ function LandingPage() {
           </div>
         </header>
 
+        {/* Hero */}
         <section className="grid flex-1 items-center gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
             <div className="mb-5 inline-flex rounded-full border border-blue-400/25 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-200">
-              Figma-like graphics as editable text source
+              Open format · AI-native · Editable vector graphics
             </div>
             <h1 className="max-w-4xl text-5xl font-semibold tracking-[-0.055em] text-white sm:text-6xl lg:text-7xl">
-              Generate with AI. Edit it like a design file.
+              Design with AI.<br />Edit like Figma.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">
-              AI image generators give you pixels that are hard to change. nextPNG generates Figma-like vector source instead: layered, editable, portable as text, and rendered sharply at any size.
+              AI image generators give you frozen pixels. nextPNG gives you <strong className="text-white">editable vector source</strong> — layers, shapes, text, and styles in an open YAML format. Export to SVG, PNG, or share the source.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/editing"
                 className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-zinc-950 shadow-[0_0_40px_rgba(255,255,255,0.18)] transition hover:bg-blue-100"
               >
-                Try an editable design
+                Open Studio — Free
               </Link>
-              <Link
-                href="/viewer"
+              <a
+                href="https://github.com/jacobjiangwei/nextPNG/tree/main/spec"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="rounded-full border border-zinc-600 bg-zinc-950/60 px-6 py-3 text-sm font-semibold text-zinc-100 transition hover:border-blue-400 hover:bg-blue-500/10"
               >
-                Open online viewer
-              </Link>
+                Read the spec →
+              </a>
             </div>
             <div className="mt-8 flex flex-wrap gap-2 text-xs text-zinc-400">
-              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Prompt to design</span>
-              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Editable YAML</span>
-              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Vector layers</span>
-              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">High-DPI PNG</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Prompt → Design</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">YAML Source</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">SVG + PNG Export</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">34 Google Fonts</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Open Source</span>
             </div>
           </div>
 
+          {/* Code preview mockup */}
           <div className="relative">
             <div className="absolute -inset-6 rounded-[2rem] bg-blue-500/10 blur-3xl" />
             <div className="relative overflow-hidden rounded-[2rem] border border-zinc-700/80 bg-zinc-950/80 shadow-2xl">
@@ -1342,7 +1377,7 @@ function LandingPage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
                 <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
                 <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-                <span className="ml-3 text-xs text-zinc-500">npng source to editable design</span>
+                <span className="ml-3 text-xs text-zinc-500">npng source → editable design</span>
               </div>
               <div className="grid min-h-[430px] grid-cols-[0.88fr_1.12fr]">
                 <div className="border-r border-zinc-800 bg-[#10131c] p-5 font-mono text-[11px] leading-5 text-zinc-400">
@@ -1358,9 +1393,9 @@ function LandingPage() {
                   <div className="pl-12">fill: glass-gradient</div>
                   <div className="pl-10 text-emerald-300">- type: text</div>
                   <div className="pl-12">content: Launch faster</div>
-                  <div className="pl-12">width: 320</div>
+                  <div className="pl-12">font_family: Montserrat</div>
                   <div className="mt-4 rounded-lg border border-blue-400/20 bg-blue-400/10 p-3 font-sans text-xs leading-5 text-blue-100">
-                    If the AI result is almost right, edit the actual source: change colors, move layers, rewrite text, and export sharper.
+                    Edit the source: change colors, move layers, swap fonts, rewrite text, then export to SVG or PNG.
                   </div>
                 </div>
                 <div className="relative overflow-hidden bg-[radial-gradient(circle_at_34%_24%,rgba(96,165,250,0.45),transparent_25%),radial-gradient(circle_at_72%_64%,rgba(236,72,153,0.32),transparent_28%),#0f1020] p-6">
@@ -1371,7 +1406,7 @@ function LandingPage() {
                     <div className="mt-3 max-w-[280px] text-sm leading-6 text-white/65">
                       Prompt-generated design source that stays layered, editable, and lossless.
                     </div>
-                    <div className="mt-6 inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold text-zinc-950">Export @4x</div>
+                    <div className="mt-6 inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold text-zinc-950">Export SVG / PNG</div>
                   </div>
                 </div>
               </div>
@@ -1379,7 +1414,8 @@ function LandingPage() {
           </div>
         </section>
 
-        <section className="grid gap-3 pb-8 md:grid-cols-3">
+        {/* Value cards */}
+        <section className="grid gap-3 pb-10 md:grid-cols-3">
           {valueCards.map((card) => (
             <div key={card.title} className="rounded-2xl border border-zinc-800 bg-zinc-950/55 p-5">
               <div className="text-sm font-semibold text-white">{card.title}</div>
@@ -1387,6 +1423,86 @@ function LandingPage() {
             </div>
           ))}
         </section>
+
+        {/* Use cases */}
+        <section className="pb-10">
+          <h2 className="mb-6 text-center text-2xl font-semibold text-white">What you can design</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+            {useCases.map((uc) => (
+              <div key={uc.label} className="flex flex-col items-center rounded-xl border border-zinc-800 bg-zinc-950/55 p-4 text-center">
+                <span className="text-2xl">{uc.emoji}</span>
+                <div className="mt-2 text-sm font-semibold text-white">{uc.label}</div>
+                <div className="mt-1 text-xs text-zinc-500">{uc.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Comparison table */}
+        <section className="pb-10">
+          <h2 className="mb-6 text-center text-2xl font-semibold text-white">Why npng?</h2>
+          <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950/55">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-400">
+                  <th className="px-4 py-3 text-left font-medium">Feature</th>
+                  <th className="px-4 py-3 text-center font-semibold text-blue-300">nextPNG</th>
+                  <th className="px-4 py-3 text-center font-medium">Figma</th>
+                  <th className="px-4 py-3 text-center font-medium">Midjourney</th>
+                  <th className="px-4 py-3 text-center font-medium">Canva</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr key={row.feature} className="border-b border-zinc-800/50">
+                    <td className="px-4 py-2.5 text-zinc-300">{row.feature}</td>
+                    <td className="px-4 py-2.5 text-center">{checkMark(row.us)}</td>
+                    <td className="px-4 py-2.5 text-center">{checkMark(row.figma)}</td>
+                    <td className="px-4 py-2.5 text-center">{checkMark(row.midjourney)}</td>
+                    <td className="px-4 py-2.5 text-center">{checkMark(row.canva)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* npng format highlight */}
+        <section className="pb-10">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/55 p-8">
+            <h2 className="mb-4 text-2xl font-semibold text-white">The npng format — open standard for AI-native design</h2>
+            <p className="mb-6 max-w-3xl text-sm leading-6 text-zinc-400">
+              npng is a YAML-based vector graphics format designed for AI generation. It&apos;s human-readable, git-diffable, and can be rendered by any Canvas 2D implementation. Think of it as Markdown for design files.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border border-zinc-700/50 bg-zinc-900/50 p-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-300">For AI agents</div>
+                <div className="text-sm text-zinc-400">Any LLM can generate valid npng with a system prompt. No special API needed.</div>
+              </div>
+              <div className="rounded-lg border border-zinc-700/50 bg-zinc-900/50 p-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-300">For developers</div>
+                <div className="text-sm text-zinc-400">YAML source, git-friendly, render with JavaScript/Python. npm package coming soon.</div>
+              </div>
+              <div className="rounded-lg border border-zinc-700/50 bg-zinc-900/50 p-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-purple-300">For designers</div>
+                <div className="text-sm text-zinc-400">Layers, styles, components — familiar concepts, now AI-generated and text-portable.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-zinc-800/60 py-6 text-center text-xs text-zinc-500">
+          <div className="flex items-center justify-center gap-4">
+            <a href="https://github.com/jacobjiangwei/nextPNG" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition">GitHub</a>
+            <span>·</span>
+            <a href="https://github.com/jacobjiangwei/nextPNG/tree/main/spec" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition">Format Spec</a>
+            <span>·</span>
+            <a href="https://github.com/jacobjiangwei/nextPNG/tree/main/examples" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition">Examples</a>
+            <span>·</span>
+            <span>© {new Date().getFullYear()} nextPNG</span>
+          </div>
+        </footer>
       </div>
     </main>
   );
@@ -1514,6 +1630,43 @@ export function DesignStudio() {
     link.click();
     URL.revokeObjectURL(link.href);
   }, [state.yamlText]);
+
+  const handleExportSvg = useCallback(() => {
+    if (!state.parsedDoc) {
+      alert("Cannot export SVG until the YAML is valid.");
+      return;
+    }
+    const svg = npngToSvg(state.parsedDoc);
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const link = document.createElement("a");
+    link.download = "export.svg";
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }, [state.parsedDoc]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (!state.parsedDoc) {
+      alert("Cannot export PDF until the YAML is valid.");
+      return;
+    }
+    try {
+      await preloadNpngImages(state.parsedDoc);
+      const canvas = document.createElement("canvas");
+      renderNpng(state.parsedDoc, canvas, { pixelRatio: exportScale });
+      const imgData = canvas.toDataURL("image/png");
+      const w = state.parsedDoc.canvas?.width ?? 800;
+      const h = state.parsedDoc.canvas?.height ?? 600;
+      const { jsPDF } = await import("jspdf");
+      const orientation = w >= h ? "landscape" : "portrait";
+      const pdf = new jsPDF({ orientation, unit: "px", format: [w, h] });
+      pdf.addImage(imgData, "PNG", 0, 0, w, h);
+      pdf.save("export.pdf");
+    } catch (error) {
+      console.error(error);
+      alert("PDF export failed.");
+    }
+  }, [state.parsedDoc, exportScale]);
 
   const handleLoadExample = useCallback((yaml: string) => {
     dispatch({ type: "SET_YAML", yaml });
@@ -1643,6 +1796,8 @@ export function DesignStudio() {
         exportScale={exportScale}
         onExportScaleChange={setExportScale}
         onExportPng={handleExportPng}
+        onExportSvg={handleExportSvg}
+        onExportPdf={handleExportPdf}
         onDownloadNpng={handleDownloadNpng}
         onLoadExample={handleLoadExample}
         onFitToScreen={handleFitToScreen}
