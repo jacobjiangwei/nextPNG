@@ -1885,14 +1885,7 @@ export function DesignStudio() {
         <aside className="w-[300px] shrink-0 border-l border-zinc-700/80 bg-[#252525] flex flex-col overflow-hidden">
           <div className="border-b border-zinc-700/80 px-3 py-2">
             <div className="flex items-center justify-between">
-              <div className="flex rounded-lg bg-zinc-900 p-0.5">
-                <button className="rounded-md bg-zinc-700 px-3 py-1 text-xs font-semibold text-white">
-                  Design
-                </button>
-                <button className="rounded-md px-3 py-1 text-xs text-zinc-500" disabled>
-                  Prototype
-                </button>
-              </div>
+              <div className="text-xs font-semibold text-zinc-200">Design</div>
               <div className="text-xs text-zinc-500">{Math.round(state.zoom * 100)}%</div>
             </div>
           </div>
