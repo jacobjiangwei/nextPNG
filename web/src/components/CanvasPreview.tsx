@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import yaml from "js-yaml";
-import { renderNpng } from "../lib/renderer";
+import { renderNpng, preloadNpngImages } from "../lib/renderer";
 import { hitTestAll, hitTestBox, getBoundingBox, getSelectionBoundingBox, mergeBoundingBoxes, type BoundingBox } from "../lib/hitTest";
 import {
   getHandles,
@@ -216,15 +216,25 @@ export default function CanvasPreview({
   // Render main canvas
   useEffect(() => {
     if (!canvasRef.current) return;
+    let cancelled = false;
     try {
       const data = yaml.load(yamlText) as NpngDocument;
       if (data && typeof data === "object") {
         const { width, height } = getLogicalCanvasSize(data);
+        // Preload fonts + images, then render
+        preloadNpngImages(data).then(() => {
+          if (cancelled || !canvasRef.current) return;
+          renderNpng(data, canvasRef.current, { pixelRatio: getPreviewPixelRatio(zoom) });
+          canvasRef.current.style.width = `${width}px`;
+          canvasRef.current.style.height = `${height}px`;
+        });
+        // Also render immediately with fallback fonts for responsiveness
         renderNpng(data, canvasRef.current, { pixelRatio: getPreviewPixelRatio(zoom) });
         canvasRef.current.style.width = `${width}px`;
         canvasRef.current.style.height = `${height}px`;
       }
     } catch { /* parse error */ }
+    return () => { cancelled = true; };
   }, [yamlText, zoom]);
 
   // Render selection overlay + grid + pen/poly preview

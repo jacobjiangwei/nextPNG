@@ -3,6 +3,7 @@ import { tracePath } from "./pathParser";
 import { computeLayout } from "./autoLayout";
 import { resolveInstance } from "./componentSystem";
 import { getBoundingBox, mergeBoundingBoxes, type BoundingBox } from "./hitTest";
+import { ensureFontsLoaded, isKnownFont } from "./fonts";
 import type { NpngDocument, NpngElement, FillSpec, StrokeSpec, TransformSpec, FilterSpec, DefItem, ArrowEndType, ComponentDef, FillLayer, StrokeLayer, EffectSpec } from "./types";
 
 const imageCache = new Map<string, HTMLImageElement>();
@@ -134,8 +135,39 @@ function collectMaskImageHrefs(def: DefItem, hrefs: Set<string>, components: Com
   }
 }
 
+function collectElementFonts(
+  element: NpngElement,
+  fonts: Set<string>,
+  components: ComponentDef[],
+  defs: Map<string, DefItem>,
+  resolvingComponentIds = new Set<string>()
+): void {
+  if (element.visible === false) return;
+  if (element.type === "text") {
+    const family = element.font_family;
+    if (family && isKnownFont(family)) fonts.add(family);
+  }
+  if (element.type === "group") {
+    for (const child of element.elements ?? []) collectElementFonts(child, fonts, components, defs, resolvingComponentIds);
+  }
+  if (element.type === "frame") {
+    for (const child of element.children ?? []) collectElementFonts(child, fonts, components, defs, resolvingComponentIds);
+  }
+  if (element.type === "use" && element.ref) {
+    const def = defs.get(element.ref);
+    if (def && isNpngElement(def)) collectElementFonts(def, fonts, components, defs, resolvingComponentIds);
+  }
+  if (element.type === "component-instance" && element.component_id && !resolvingComponentIds.has(element.component_id)) {
+    const nextResolving = new Set(resolvingComponentIds);
+    nextResolving.add(element.component_id);
+    const resolved = resolveInstance(element, components);
+    if (resolved) collectElementFonts(resolved, fonts, components, defs, nextResolving);
+  }
+}
+
 export async function preloadNpngImages(data: NpngDocument): Promise<void> {
   const hrefs = new Set<string>();
+  const fontFamilies = new Set<string>();
   const components = data.components ?? [];
   const defs = new Map<string, DefItem>();
   for (const def of data.defs ?? []) {
@@ -144,13 +176,19 @@ export async function preloadNpngImages(data: NpngDocument): Promise<void> {
 
   for (const layer of data.layers ?? []) {
     if (layer.visible === false) continue;
-    for (const element of layer.elements ?? []) collectElementImageHrefs(element, hrefs, components, defs);
+    for (const element of layer.elements ?? []) {
+      collectElementImageHrefs(element, hrefs, components, defs);
+      collectElementFonts(element, fontFamilies, components, defs);
+    }
     if (layer.mask && defs.has(layer.mask)) {
       collectMaskImageHrefs(defs.get(layer.mask)!, hrefs, components, defs);
     }
   }
 
-  await Promise.all([...hrefs].map(preloadImage));
+  await Promise.all([
+    ...([...hrefs].map(preloadImage)),
+    ensureFontsLoaded(fontFamilies),
+  ]);
 }
 
 function applyFill(ctx: CanvasRenderingContext2D, fillSpec: FillSpec): boolean {

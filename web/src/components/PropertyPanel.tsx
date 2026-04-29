@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { FONT_CATALOG, getCategoryLabel, loadFont, type FontEntry } from "../lib/fonts";
 import type {
   NpngDocument,
   NpngElement,
@@ -66,6 +67,7 @@ type EditableElement = NpngElement & {
   y2?: number;
   content?: string;
   font_size?: number;
+  font_family?: string;
   line_height?: number;
   font_weight?: string;
   align?: "left" | "center" | "right";
@@ -394,6 +396,29 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
               onChange={ev => update({ content: ev.target.value })}
               className="flex-1 bg-zinc-800 border border-zinc-600 rounded px-1.5 py-0.5 text-zinc-200 text-xs"
             />
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <span className="w-12 text-zinc-500">Font</span>
+            <select
+              value={e.font_family ?? "sans-serif"}
+              onChange={ev => {
+                const family = ev.target.value;
+                loadFont(family);
+                update({ font_family: family });
+              }}
+              className="flex-1 bg-zinc-800 border border-zinc-600 rounded px-1.5 py-0.5 text-zinc-200 text-xs"
+            >
+              <option value="sans-serif">System Sans-serif</option>
+              <option value="serif">System Serif</option>
+              <option value="monospace">System Monospace</option>
+              {(["sans-serif", "serif", "display", "handwriting", "monospace"] as FontEntry["category"][]).map(cat => (
+                <optgroup key={cat} label={getCategoryLabel(cat)}>
+                  {FONT_CATALOG.filter(f => f.category === cat).map(f => (
+                    <option key={f.family} value={f.family}>{f.family}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </label>
           <NumberInput label="Size" value={e.font_size ?? 16} onChange={v => update({ font_size: v })} />
           <NumberInput label="Letter" value={e.letter_spacing ?? 0} onChange={v => update({ letter_spacing: v || null })} />
