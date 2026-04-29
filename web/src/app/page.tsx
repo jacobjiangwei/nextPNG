@@ -10,7 +10,6 @@ import ChatPanel from "../components/ChatPanel";
 import CanvasPreview from "../components/CanvasPreview";
 import PropertyPanel from "../components/PropertyPanel";
 import YamlEditor from "../components/YamlEditor";
-import ProjectPanel from "../components/ProjectPanel";
 import { preloadNpngImages, renderNpng } from "../lib/renderer";
 import { npngToSvg } from "../lib/svgExporter";
 import { getElementAtAddress } from "../lib/elementTree";
@@ -1510,7 +1509,7 @@ function LandingPage() {
 
 export function DesignStudio() {
   const [state, dispatch] = useReducer(editorReducer, DEFAULT_YAML, createInitialState);
-  const [leftTab, setLeftTab] = useState<"ai" | "layers" | "source" | "projects">("ai");
+  const [leftTab, setLeftTab] = useState<"ai" | "layers" | "source">("ai");
   const [exportScale, setExportScale] = useState(4);
   const [projects, setProjects] = useState<StoredNpngProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -1536,7 +1535,7 @@ export function DesignStudio() {
         nextProjects = [...nextProjects, sharedProject];
         nextActiveProjectId = sharedProject.id;
         nextYaml = sharedYaml;
-        nextLeftTab = "projects";
+        nextLeftTab = "source";
         nextProjectStatus = "Loaded shared npng source into a local project.";
       } catch (error) {
         console.error(error);
@@ -1783,7 +1782,6 @@ export function DesignStudio() {
     { id: "ai", label: "AI", hint: "Prompt and patch" },
     { id: "layers", label: "Layers", hint: "Object tree" },
     { id: "source", label: "Source", hint: "npng YAML" },
-    { id: "projects", label: "Files", hint: "Save and share" },
   ];
 
   return (
@@ -1802,6 +1800,9 @@ export function DesignStudio() {
         onLoadExample={handleLoadExample}
         onFitToScreen={handleFitToScreen}
         onImageUpload={handleImageUpload}
+        onNewProject={handleNewProject}
+        onSaveVersion={handleSaveVersion}
+        onCreateShareLink={handleCreateShareLink}
         examples={EXAMPLES}
         canUndo={state.historyIndex > 0}
         canRedo={state.historyIndex < state.history.length - 1}
@@ -1820,7 +1821,7 @@ export function DesignStudio() {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-1 border-b border-zinc-700/80 p-2">
+          <div className="grid grid-cols-3 gap-1 border-b border-zinc-700/80 p-2">
             {leftTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -1856,20 +1857,6 @@ export function DesignStudio() {
             )}
             {leftTab === "source" && (
               <YamlEditor value={state.yamlText} onChange={handleYamlChange} />
-            )}
-            {leftTab === "projects" && (
-              <ProjectPanel
-                projects={projects}
-                activeProjectId={activeProjectId}
-                shareUrl={shareUrl}
-                status={projectStatus}
-                onNewProject={handleNewProject}
-                onSaveVersion={handleSaveVersion}
-                onOpenProject={handleOpenProject}
-                onRestoreVersion={handleRestoreVersion}
-                onDeleteProject={handleDeleteProject}
-                onCreateShareLink={handleCreateShareLink}
-              />
             )}
           </div>
         </aside>
